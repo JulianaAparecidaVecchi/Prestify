@@ -123,4 +123,25 @@ public class GlobalExceptionHandler {
             .status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(error);
     }
+
+    @ExceptionHandler(
+        org.springframework.http.converter.HttpMessageNotReadableException.class
+    )
+    public ResponseEntity<ApiError> handleHttpMessageNotReadable(
+            org.springframework.http.converter.HttpMessageNotReadableException ex,
+            HttpServletRequest request
+    ) {
+
+        ApiError error = new ApiError(
+            LocalDateTime.now(),
+            HttpStatus.BAD_REQUEST.value(),
+            "Bad Request",
+            "O corpo da requisição está inválido.",
+            request.getRequestURI()
+        );
+
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(error);
+    }
 }
