@@ -25,6 +25,20 @@ public interface FinancialRepository
             Long organizationId
         );
 
+    Page<FinancialTransaction>
+        findByOrganizationIdOrderByCreatedAtDesc(
+            Long organizationId,
+            Pageable pageable
+        );
+
+    /*
+     * Listagem geral do financeiro.
+     *
+     * O filtro de período permanece baseado
+     * na data de vencimento, pois esta tela
+     * representa os lançamentos financeiros
+     * e seus vencimentos.
+     */
     @Query("""
         SELECT f
         FROM FinancialTransaction f
@@ -80,6 +94,19 @@ public interface FinancialRepository
         Pageable pageable
     );
 
+    /*
+     * Totais financeiros:
+     *
+     * PAID
+     *     -> utiliza paymentDate
+     *
+     * PENDING
+     *     -> utiliza dueDate
+     *
+     * Dessa forma, valores realizados entram
+     * no fluxo de caixa na data em que foram
+     * efetivamente pagos/recebidos.
+     */
     @Query("""
         SELECT COALESCE(SUM(f.amount), 0)
         FROM FinancialTransaction f
@@ -87,12 +114,31 @@ public interface FinancialRepository
         AND f.type = :type
         AND f.status = :status
         AND (
-            :startDate IS NULL
-            OR f.dueDate >= :startDate
-        )
-        AND (
-            :endDate IS NULL
-            OR f.dueDate <= :endDate
+            (
+                f.status =
+                    br.com.prestify.enums.FinancialStatus.PAID
+                AND (
+                    :startDate IS NULL
+                    OR f.paymentDate >= :startDate
+                )
+                AND (
+                    :endDate IS NULL
+                    OR f.paymentDate <= :endDate
+                )
+            )
+            OR
+            (
+                f.status <>
+                    br.com.prestify.enums.FinancialStatus.PAID
+                AND (
+                    :startDate IS NULL
+                    OR f.dueDate >= :startDate
+                )
+                AND (
+                    :endDate IS NULL
+                    OR f.dueDate <= :endDate
+                )
+            )
         )
         """)
     BigDecimal sumByTypeAndStatus(
@@ -112,14 +158,23 @@ public interface FinancialRepository
         LocalDate endDate
     );
 
+    /*
+     * Fluxo financeiro realizado.
+     *
+     * Como são apenas lançamentos PAID,
+     * o período e a ordenação utilizam
+     * paymentDate.
+     */
     @Query("""
         SELECT f
         FROM FinancialTransaction f
         WHERE f.organization.id = :organizationId
-        AND f.status = br.com.prestify.enums.FinancialStatus.PAID
-        AND f.dueDate >= :startDate
-        AND f.dueDate <= :endDate
-        ORDER BY f.dueDate ASC, f.id ASC
+        AND f.status =
+            br.com.prestify.enums.FinancialStatus.PAID
+        AND f.paymentDate IS NOT NULL
+        AND f.paymentDate >= :startDate
+        AND f.paymentDate <= :endDate
+        ORDER BY f.paymentDate ASC, f.id ASC
         """)
     List<FinancialTransaction> findPaidInPeriod(
         @Param("organizationId")

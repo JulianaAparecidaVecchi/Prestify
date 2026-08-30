@@ -11,7 +11,9 @@ import jakarta.validation.Valid;
 
 import org.springframework.data.domain.Page;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -64,6 +66,80 @@ public class ClientController {
             page,
             size
         );
+    }
+
+    @GetMapping("/export/csv")
+    @PreAuthorize(
+        "hasAnyRole('OWNER', 'ADMIN', 'MANAGER', 'EMPLOYEE')"
+    )
+    public ResponseEntity<byte[]> exportCsv(
+
+            @RequestParam(
+                defaultValue = ""
+            )
+            String search,
+
+            @RequestParam(
+                required = false
+            )
+            Boolean active
+
+    ) {
+
+        byte[] file =
+            clientService.exportCsv(
+                search,
+                active
+            );
+
+        return ResponseEntity
+            .ok()
+            .header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"clientes.csv\""
+            )
+            .contentType(
+                MediaType.parseMediaType(
+                    "text/csv;charset=UTF-8"
+                )
+            )
+            .body(file);
+    }
+
+    @GetMapping("/export/pdf")
+    @PreAuthorize(
+        "hasAnyRole('OWNER', 'ADMIN', 'MANAGER', 'EMPLOYEE')"
+    )
+    public ResponseEntity<byte[]> exportPdf(
+
+            @RequestParam(
+                defaultValue = ""
+            )
+            String search,
+
+            @RequestParam(
+                required = false
+            )
+            Boolean active
+
+    ) {
+
+        byte[] file =
+            clientService.exportPdf(
+                search,
+                active
+            );
+
+        return ResponseEntity
+            .ok()
+            .header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"clientes.pdf\""
+            )
+            .contentType(
+                MediaType.APPLICATION_PDF
+            )
+            .body(file);
     }
 
     @GetMapping("/{id}")

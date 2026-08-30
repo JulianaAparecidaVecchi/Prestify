@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+
 import org.springframework.data.repository.query.Param;
 
 public interface StockRepository
@@ -17,6 +18,36 @@ public interface StockRepository
     Optional<Stock>
         findByProductIdAndOrganizationId(
             Long productId,
+            Long organizationId
+        );
+
+    /*
+     * Consulta utilizada durante movimentações
+     * de estoque.
+     *
+     * O FOR UPDATE é escrito diretamente porque
+     * o ambiente local utiliza MariaDB 10.4.
+     *
+     * Enquanto a transação estiver aberta,
+     * outra movimentação não poderá alterar
+     * simultaneamente esta mesma linha.
+     */
+    @Query(
+        value = """
+            SELECT *
+            FROM stocks
+            WHERE product_id = :productId
+            AND organization_id = :organizationId
+            FOR UPDATE
+            """,
+        nativeQuery = true
+    )
+    Optional<Stock>
+        findByProductIdAndOrganizationIdForUpdate(
+            @Param("productId")
+            Long productId,
+
+            @Param("organizationId")
             Long organizationId
         );
 

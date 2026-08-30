@@ -28,6 +28,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AppointmentService {
@@ -52,6 +53,7 @@ public class AppointmentService {
         this.currentUserService = currentUserService;
     }
 
+    @Transactional(readOnly = true)
     public Page<AppointmentResponse> list(
             LocalDateTime start,
             LocalDateTime end,
@@ -107,6 +109,7 @@ public class AppointmentService {
         );
     }
 
+    @Transactional(readOnly = true)
     public AppointmentResponse getById(
             Long id
     ) {
@@ -116,6 +119,7 @@ public class AppointmentService {
         );
     }
 
+    @Transactional
     public AppointmentResponse create(
             AppointmentCreateRequest request
     ) {
@@ -150,7 +154,11 @@ public class AppointmentService {
         LocalDateTime startTime =
             request.getStartTime();
 
-        if (startTime.isBefore(LocalDateTime.now())) {
+        if (
+            startTime.isBefore(
+                LocalDateTime.now()
+            )
+        ) {
             throw new BusinessException(
                 "O agendamento não pode ser criado no passado."
             );
@@ -173,11 +181,22 @@ public class AppointmentService {
             new Appointment();
 
         appointment.setClient(client);
-        appointment.setService(service);
-        appointment.setProfessional(professional);
 
-        appointment.setStartTime(startTime);
-        appointment.setEndTime(endTime);
+        appointment.setService(
+            service
+        );
+
+        appointment.setProfessional(
+            professional
+        );
+
+        appointment.setStartTime(
+            startTime
+        );
+
+        appointment.setEndTime(
+            endTime
+        );
 
         /*
          * Snapshot:
@@ -215,6 +234,7 @@ public class AppointmentService {
         );
     }
 
+    @Transactional
     public AppointmentResponse update(
             Long id,
             AppointmentUpdateRequest request
@@ -271,7 +291,11 @@ public class AppointmentService {
         LocalDateTime startTime =
             request.getStartTime();
 
-        if (startTime.isBefore(LocalDateTime.now())) {
+        if (
+            startTime.isBefore(
+                LocalDateTime.now()
+            )
+        ) {
             throw new BusinessException(
                 "O agendamento não pode ser movido para o passado."
             );
@@ -290,12 +314,25 @@ public class AppointmentService {
             appointment.getId()
         );
 
-        appointment.setClient(client);
-        appointment.setService(service);
-        appointment.setProfessional(professional);
+        appointment.setClient(
+            client
+        );
 
-        appointment.setStartTime(startTime);
-        appointment.setEndTime(endTime);
+        appointment.setService(
+            service
+        );
+
+        appointment.setProfessional(
+            professional
+        );
+
+        appointment.setStartTime(
+            startTime
+        );
+
+        appointment.setEndTime(
+            endTime
+        );
 
         appointment.setPrice(
             service.getPrice()
@@ -318,6 +355,7 @@ public class AppointmentService {
         );
     }
 
+    @Transactional
     public AppointmentResponse changeStatus(
             Long id,
             AppointmentStatus newStatus
@@ -329,8 +367,12 @@ public class AppointmentService {
         AppointmentStatus currentStatus =
             appointment.getStatus();
 
-        if (currentStatus == newStatus) {
-            return toResponse(appointment);
+        if (
+            currentStatus == newStatus
+        ) {
+            return toResponse(
+                appointment
+            );
         }
 
         validateStatusTransition(
@@ -338,7 +380,9 @@ public class AppointmentService {
             newStatus
         );
 
-        appointment.setStatus(newStatus);
+        appointment.setStatus(
+            newStatus
+        );
 
         return toResponse(
             appointmentRepository.save(
@@ -347,6 +391,7 @@ public class AppointmentService {
         );
     }
 
+    @Transactional
     public void delete(
             Long id
     ) {
@@ -381,7 +426,8 @@ public class AppointmentService {
     ) {
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
 
         return appointmentRepository
             .findByIdAndOrganizationId(
@@ -456,19 +502,31 @@ public class AppointmentService {
             User professional
     ) {
 
-        if (!Boolean.TRUE.equals(client.getActive())) {
+        if (
+            !Boolean.TRUE.equals(
+                client.getActive()
+            )
+        ) {
             throw new BusinessException(
                 "Não é possível agendar para um cliente inativo."
             );
         }
 
-        if (!Boolean.TRUE.equals(service.getActive())) {
+        if (
+            !Boolean.TRUE.equals(
+                service.getActive()
+            )
+        ) {
             throw new BusinessException(
                 "Não é possível utilizar um serviço inativo."
             );
         }
 
-        if (!Boolean.TRUE.equals(professional.getActive())) {
+        if (
+            !Boolean.TRUE.equals(
+                professional.getActive()
+            )
+        ) {
             throw new BusinessException(
                 "Não é possível agendar para um profissional inativo."
             );
@@ -505,26 +563,36 @@ public class AppointmentService {
             AppointmentStatus next
     ) {
 
-        boolean valid = switch (current) {
+        boolean valid =
+            switch (current) {
 
-            case SCHEDULED ->
-                next == AppointmentStatus.CONFIRMED
-                || next == AppointmentStatus.CANCELLED
-                || next == AppointmentStatus.NO_SHOW;
+                case SCHEDULED ->
+                    next
+                        == AppointmentStatus.CONFIRMED
+                    || next
+                        == AppointmentStatus.CANCELLED
+                    || next
+                        == AppointmentStatus.NO_SHOW;
 
-            case CONFIRMED ->
-                next == AppointmentStatus.IN_PROGRESS
-                || next == AppointmentStatus.CANCELLED
-                || next == AppointmentStatus.NO_SHOW;
+                case CONFIRMED ->
+                    next
+                        == AppointmentStatus.IN_PROGRESS
+                    || next
+                        == AppointmentStatus.CANCELLED
+                    || next
+                        == AppointmentStatus.NO_SHOW;
 
-            case IN_PROGRESS ->
-                next == AppointmentStatus.COMPLETED
-                || next == AppointmentStatus.CANCELLED;
+                case IN_PROGRESS ->
+                    next
+                        == AppointmentStatus.COMPLETED
+                    || next
+                        == AppointmentStatus.CANCELLED;
 
-            case COMPLETED,
-                 CANCELLED,
-                 NO_SHOW -> false;
-        };
+                case COMPLETED,
+                     CANCELLED,
+                     NO_SHOW ->
+                    false;
+            };
 
         if (!valid) {
             throw new BusinessException(

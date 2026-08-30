@@ -47,10 +47,18 @@ public class FinancialService {
             SupplierRepository supplierRepository,
             CurrentUserService currentUserService
     ) {
-        this.financialRepository = financialRepository;
-        this.clientRepository = clientRepository;
-        this.supplierRepository = supplierRepository;
-        this.currentUserService = currentUserService;
+
+        this.financialRepository =
+            financialRepository;
+
+        this.clientRepository =
+            clientRepository;
+
+        this.supplierRepository =
+            supplierRepository;
+
+        this.currentUserService =
+            currentUserService;
     }
 
     @Transactional
@@ -59,7 +67,8 @@ public class FinancialService {
     ) {
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
 
         Client client =
             findClientIfPresent(
@@ -80,13 +89,16 @@ public class FinancialService {
         );
 
         User currentUser =
-            currentUserService.getCurrentUser();
+            currentUserService
+                .getCurrentUser();
 
         FinancialTransaction transaction =
             new FinancialTransaction();
 
         transaction.setDescription(
-            request.getDescription().trim()
+            request
+                .getDescription()
+                .trim()
         );
 
         transaction.setType(
@@ -107,8 +119,13 @@ public class FinancialService {
             request.getDueDate()
         );
 
-        transaction.setClient(client);
-        transaction.setSupplier(supplier);
+        transaction.setClient(
+            client
+        );
+
+        transaction.setSupplier(
+            supplier
+        );
 
         transaction.setNotes(
             normalizeNullable(
@@ -120,15 +137,21 @@ public class FinancialService {
             FinancialStatus.PENDING
         );
 
-        transaction.setPaymentMethod(null);
-        transaction.setPaymentDate(null);
+        transaction.setPaymentMethod(
+            null
+        );
+
+        transaction.setPaymentDate(
+            null
+        );
 
         transaction.setCreatedBy(
             currentUser
         );
 
         transaction.setOrganization(
-            currentUser.getOrganization()
+            currentUser
+                .getOrganization()
         );
 
         return toResponse(
@@ -138,6 +161,7 @@ public class FinancialService {
         );
     }
 
+    @Transactional(readOnly = true)
     public Page<FinancialResponse> list(
             String search,
             FinancialType type,
@@ -148,19 +172,26 @@ public class FinancialService {
             int size
     ) {
 
-        validatePagination(page, size);
+        validatePagination(
+            page,
+            size
+        );
+
         validateDateRange(
             startDate,
             endDate
         );
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
 
         return financialRepository
             .search(
                 organizationId,
-                normalizeNullable(search),
+                normalizeNullable(
+                    search
+                ),
                 type,
                 status,
                 startDate,
@@ -179,9 +210,12 @@ public class FinancialService {
                     )
                 )
             )
-            .map(this::toResponse);
+            .map(
+                this::toResponse
+            );
     }
 
+    @Transactional(readOnly = true)
     public FinancialResponse getById(
             Long id
     ) {
@@ -195,6 +229,7 @@ public class FinancialService {
         );
     }
 
+    @Transactional(readOnly = true)
     public FinancialSummaryResponse getSummary(
             LocalDate startDate,
             LocalDate endDate
@@ -206,7 +241,8 @@ public class FinancialService {
         );
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
 
         BigDecimal paidIncome =
             getTotal(
@@ -265,7 +301,8 @@ public class FinancialService {
     ) {
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
 
         FinancialTransaction transaction =
             findTransaction(
@@ -301,7 +338,9 @@ public class FinancialService {
         );
 
         transaction.setDescription(
-            request.getDescription().trim()
+            request
+                .getDescription()
+                .trim()
         );
 
         transaction.setType(
@@ -322,8 +361,13 @@ public class FinancialService {
             request.getDueDate()
         );
 
-        transaction.setClient(client);
-        transaction.setSupplier(supplier);
+        transaction.setClient(
+            client
+        );
+
+        transaction.setSupplier(
+            supplier
+        );
 
         transaction.setNotes(
             normalizeNullable(
@@ -345,7 +389,8 @@ public class FinancialService {
     ) {
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
 
         FinancialTransaction transaction =
             findTransaction(
@@ -388,7 +433,9 @@ public class FinancialService {
             LocalDate paymentDate =
                 request.getPaymentDate();
 
-            if (paymentDate == null) {
+            if (
+                paymentDate == null
+            ) {
                 paymentDate =
                     LocalDate.now();
             }
@@ -414,8 +461,13 @@ public class FinancialService {
                 FinancialStatus.CANCELLED
             );
 
-            transaction.setPaymentMethod(null);
-            transaction.setPaymentDate(null);
+            transaction.setPaymentMethod(
+                null
+            );
+
+            transaction.setPaymentDate(
+                null
+            );
 
         } else {
 
@@ -437,7 +489,8 @@ public class FinancialService {
     ) {
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
 
         FinancialTransaction transaction =
             findTransaction(
@@ -465,8 +518,13 @@ public class FinancialService {
             FinancialStatus.CANCELLED
         );
 
-        transaction.setPaymentMethod(null);
-        transaction.setPaymentDate(null);
+        transaction.setPaymentMethod(
+            null
+        );
+
+        transaction.setPaymentDate(
+            null
+        );
 
         financialRepository.save(
             transaction
@@ -502,7 +560,9 @@ public class FinancialService {
             Supplier supplier
     ) {
 
-        if (type == null) {
+        if (
+            type == null
+        ) {
             throw new BusinessException(
                 "O tipo financeiro é obrigatório."
             );
@@ -532,7 +592,9 @@ public class FinancialService {
             Long organizationId
     ) {
 
-        if (clientId == null) {
+        if (
+            clientId == null
+        ) {
             return null;
         }
 
@@ -549,9 +611,11 @@ public class FinancialService {
                         )
                 );
 
-        if (!Boolean.TRUE.equals(
+        if (
+            !Boolean.TRUE.equals(
                 client.getActive()
-        )) {
+            )
+        ) {
             throw new BusinessException(
                 "O cliente informado está inativo."
             );
@@ -565,7 +629,9 @@ public class FinancialService {
             Long organizationId
     ) {
 
-        if (supplierId == null) {
+        if (
+            supplierId == null
+        ) {
             return null;
         }
 
@@ -582,9 +648,11 @@ public class FinancialService {
                         )
                 );
 
-        if (!Boolean.TRUE.equals(
+        if (
+            !Boolean.TRUE.equals(
                 supplier.getActive()
-        )) {
+            )
+        ) {
             throw new BusinessException(
                 "O fornecedor informado está inativo."
             );
@@ -678,7 +746,9 @@ public class FinancialService {
         if (
             startDate != null
             && endDate != null
-            && startDate.isAfter(endDate)
+            && startDate.isAfter(
+                endDate
+            )
         ) {
             throw new BusinessException(
                 "A data inicial não pode ser posterior à data final."
@@ -691,7 +761,9 @@ public class FinancialService {
             int size
     ) {
 
-        if (page < 0) {
+        if (
+            page < 0
+        ) {
             throw new BusinessException(
                 "A página não pode ser negativa."
             );

@@ -6,9 +6,11 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 import org.springframework.beans.factory.annotation.Value;
+
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+
 import org.springframework.stereotype.Service;
 
 @Service
@@ -19,45 +21,78 @@ public class JwtService {
     @Value("${prestify.jwt.expiration}")
     private long expiration;
 
-    public JwtService(JwtEncoder jwtEncoder) {
-        this.jwtEncoder = jwtEncoder;
+    public JwtService(
+            JwtEncoder jwtEncoder
+    ) {
+        this.jwtEncoder =
+            jwtEncoder;
     }
 
-    public String generateToken(User user) {
+    public String generateToken(
+            User user
+    ) {
 
-        Instant now = Instant.now();
+        Instant now =
+            Instant.now();
 
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-            .issuer("prestify")
-            .issuedAt(now)
-            .expiresAt(
-                now.plus(
-                    expiration,
-                    ChronoUnit.SECONDS
+        JwtClaimsSet claims =
+            JwtClaimsSet
+                .builder()
+
+                .issuer(
+                    "prestify"
                 )
-            )
-            .subject(user.getEmail())
 
-            .claim(
-                "userId",
-                user.getId()
-            )
+                .issuedAt(
+                    now
+                )
 
-            .claim(
-                "role",
-                user.getRole().name()
-            )
+                .expiresAt(
+                    now.plus(
+                        expiration,
+                        ChronoUnit.SECONDS
+                    )
+                )
 
-            .claim(
-                "organizationId",
-                user.getOrganization().getId()
-            )
+                .subject(
+                    user.getEmail()
+                )
 
-            .build();
+                .claim(
+                    "userId",
+                    user.getId()
+                )
+
+                .claim(
+                    "role",
+                    user
+                        .getRole()
+                        .name()
+                )
+
+                .claim(
+                    "organizationId",
+                    user
+                        .getOrganization()
+                        .getId()
+                )
+
+                /*
+                 * Permite invalidar sessões
+                 * anteriores sem manter uma
+                 * blacklist de JWTs.
+                 */
+                .claim(
+                    "tokenVersion",
+                    user.getTokenVersion()
+                )
+
+                .build();
 
         return jwtEncoder
             .encode(
-                JwtEncoderParameters.from(claims)
+                JwtEncoderParameters
+                    .from(claims)
             )
             .getTokenValue();
     }

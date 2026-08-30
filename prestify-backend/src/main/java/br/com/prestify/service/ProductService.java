@@ -5,11 +5,13 @@ import br.com.prestify.dto.product.ProductResponse;
 import br.com.prestify.dto.product.ProductUpdateRequest;
 
 import br.com.prestify.entity.Product;
+import br.com.prestify.entity.Stock;
 
 import br.com.prestify.exception.BusinessException;
 import br.com.prestify.exception.ResourceNotFoundException;
 
 import br.com.prestify.repository.ProductRepository;
+import br.com.prestify.repository.StockRepository;
 
 import br.com.prestify.security.CurrentUserService;
 
@@ -18,21 +20,26 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final StockRepository stockRepository;
     private final CurrentUserService currentUserService;
 
     public ProductService(
             ProductRepository productRepository,
+            StockRepository stockRepository,
             CurrentUserService currentUserService
     ) {
         this.productRepository = productRepository;
+        this.stockRepository = stockRepository;
         this.currentUserService = currentUserService;
     }
 
+    @Transactional
     public ProductResponse create(
             ProductCreateRequest request
     ) {
@@ -40,9 +47,10 @@ public class ProductService {
         Long organizationId =
             currentUserService.getOrganizationId();
 
-        String sku = normalizeRequired(
-            request.getSku()
-        );
+        String sku =
+            normalizeRequired(
+                request.getSku()
+            );
 
         if (
             productRepository
@@ -56,13 +64,18 @@ public class ProductService {
             );
         }
 
-        Product product = new Product();
+        Product product =
+            new Product();
 
         product.setName(
-            normalizeRequired(request.getName())
+            normalizeRequired(
+                request.getName()
+            )
         );
 
-        product.setSku(sku);
+        product.setSku(
+            sku
+        );
 
         product.setDescription(
             normalizeNullable(
@@ -79,14 +92,18 @@ public class ProductService {
         );
 
         product.setUnit(
-            normalizeRequired(request.getUnit())
+            normalizeRequired(
+                request.getUnit()
+            )
         );
 
         product.setMinimumStock(
             request.getMinimumStock()
         );
 
-        product.setActive(true);
+        product.setActive(
+            true
+        );
 
         product.setOrganization(
             currentUserService
@@ -94,8 +111,40 @@ public class ProductService {
                 .getOrganization()
         );
 
+        Product savedProduct =
+            productRepository.save(
+                product
+            );
+
+        /*
+         * Todo produto nasce com um registro
+         * de estoque de quantidade zero.
+         *
+         * Isso garante que futuras movimentações
+         * possam utilizar PESSIMISTIC_WRITE sobre
+         * uma linha de estoque já existente.
+         */
+        Stock stock =
+            new Stock();
+
+        stock.setProduct(
+            savedProduct
+        );
+
+        stock.setQuantity(
+            0
+        );
+
+        stock.setOrganization(
+            savedProduct.getOrganization()
+        );
+
+        stockRepository.save(
+            stock
+        );
+
         return toResponse(
-            productRepository.save(product)
+            savedProduct
         );
     }
 
@@ -106,13 +155,18 @@ public class ProductService {
             int size
     ) {
 
-        validatePagination(page, size);
+        validatePagination(
+            page,
+            size
+        );
 
         Long organizationId =
             currentUserService.getOrganizationId();
 
         String normalizedSearch =
-            normalizeNullable(search);
+            normalizeNullable(
+                search
+            );
 
         return productRepository
             .search(
@@ -128,14 +182,19 @@ public class ProductService {
                     )
                 )
             )
-            .map(this::toResponse);
+            .map(
+                this::toResponse
+            );
     }
 
     public ProductResponse getById(
             Long id
     ) {
+
         return toResponse(
-            findProduct(id)
+            findProduct(
+                id
+            )
         );
     }
 
@@ -145,7 +204,9 @@ public class ProductService {
     ) {
 
         Product product =
-            findProduct(id);
+            findProduct(
+                id
+            );
 
         Long organizationId =
             currentUserService.getOrganizationId();
@@ -174,7 +235,9 @@ public class ProductService {
             )
         );
 
-        product.setSku(sku);
+        product.setSku(
+            sku
+        );
 
         product.setDescription(
             normalizeNullable(
@@ -201,7 +264,9 @@ public class ProductService {
         );
 
         return toResponse(
-            productRepository.save(product)
+            productRepository.save(
+                product
+            )
         );
     }
 
@@ -211,12 +276,18 @@ public class ProductService {
     ) {
 
         Product product =
-            findProduct(id);
+            findProduct(
+                id
+            );
 
-        product.setActive(active);
+        product.setActive(
+            active
+        );
 
         return toResponse(
-            productRepository.save(product)
+            productRepository.save(
+                product
+            )
         );
     }
 
@@ -225,7 +296,9 @@ public class ProductService {
     ) {
 
         Product product =
-            findProduct(id);
+            findProduct(
+                id
+            );
 
         /*
          * Exclusão lógica.
@@ -233,9 +306,13 @@ public class ProductService {
          * preservar o histórico de estoque,
          * compras e vendas futuras.
          */
-        product.setActive(false);
+        product.setActive(
+            false
+        );
 
-        productRepository.save(product);
+        productRepository.save(
+            product
+        );
     }
 
     private Product findProduct(
@@ -261,6 +338,7 @@ public class ProductService {
     private String normalizeRequired(
             String value
     ) {
+
         return value.trim();
     }
 
@@ -284,6 +362,7 @@ public class ProductService {
     ) {
 
         if (page < 0) {
+
             throw new BusinessException(
                 "A página não pode ser negativa."
             );
@@ -293,6 +372,7 @@ public class ProductService {
             size < 1
             || size > 100
         ) {
+
             throw new BusinessException(
                 "O tamanho da página deve estar entre 1 e 100."
             );

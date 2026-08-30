@@ -45,11 +45,21 @@ public class ReportService {
             StockRepository stockRepository,
             CurrentUserService currentUserService
     ) {
-        this.financialRepository = financialRepository;
-        this.appointmentRepository = appointmentRepository;
-        this.clientRepository = clientRepository;
-        this.stockRepository = stockRepository;
-        this.currentUserService = currentUserService;
+
+        this.financialRepository =
+            financialRepository;
+
+        this.appointmentRepository =
+            appointmentRepository;
+
+        this.clientRepository =
+            clientRepository;
+
+        this.stockRepository =
+            stockRepository;
+
+        this.currentUserService =
+            currentUserService;
     }
 
     @Transactional(readOnly = true)
@@ -58,11 +68,19 @@ public class ReportService {
             LocalDate endDate
     ) {
 
-        validatePeriod(startDate, endDate);
+        validatePeriod(
+            startDate,
+            endDate
+        );
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
 
+        /*
+         * Lançamentos PAID são contabilizados
+         * pela paymentDate.
+         */
         BigDecimal paidIncome =
             getFinancialTotal(
                 organizationId,
@@ -81,6 +99,10 @@ public class ReportService {
                 endDate
             );
 
+        /*
+         * Lançamentos PENDING continuam sendo
+         * contabilizados pela dueDate.
+         */
         BigDecimal receivable =
             getFinancialTotal(
                 organizationId,
@@ -100,7 +122,9 @@ public class ReportService {
             );
 
         BigDecimal profit =
-            paidIncome.subtract(paidExpense);
+            paidIncome.subtract(
+                paidExpense
+            );
 
         var start =
             startDate.atStartOfDay();
@@ -181,17 +205,27 @@ public class ReportService {
             LocalDate endDate
         ) {
 
-        validatePeriod(startDate, endDate);
+        validatePeriod(
+            startDate,
+            endDate
+        );
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
 
+        /*
+         * O repository já retorna somente
+         * pagamentos realizados dentro do
+         * período usando paymentDate.
+         */
         List<FinancialTransaction> transactions =
-            financialRepository.findPaidInPeriod(
-                organizationId,
-                startDate,
-                endDate
-            );
+            financialRepository
+                .findPaidInPeriod(
+                    organizationId,
+                    startDate,
+                    endDate
+                );
 
         Map<LocalDate, BigDecimal> incomeByDate =
             new LinkedHashMap<>();
@@ -199,9 +233,14 @@ public class ReportService {
         Map<LocalDate, BigDecimal> expenseByDate =
             new LinkedHashMap<>();
 
-        LocalDate currentDate = startDate;
+        LocalDate currentDate =
+            startDate;
 
-        while (!currentDate.isAfter(endDate)) {
+        while (
+            !currentDate.isAfter(
+                endDate
+            )
+        ) {
 
             incomeByDate.put(
                 currentDate,
@@ -214,16 +253,23 @@ public class ReportService {
             );
 
             currentDate =
-                currentDate.plusDays(1);
+                currentDate.plusDays(
+                    1
+                );
         }
 
         for (
             FinancialTransaction transaction
-            : transactions
+                : transactions
         ) {
 
+            /*
+             * Para fluxo realizado usamos
+             * a data efetiva do pagamento.
+             */
             LocalDate date =
-                transaction.getDueDate();
+                transaction
+                    .getPaymentDate();
 
             if (
                 transaction.getType()
@@ -235,7 +281,8 @@ public class ReportService {
                     incomeByDate
                         .get(date)
                         .add(
-                            transaction.getAmount()
+                            transaction
+                                .getAmount()
                         )
                 );
 
@@ -249,7 +296,8 @@ public class ReportService {
                     expenseByDate
                         .get(date)
                         .add(
-                            transaction.getAmount()
+                            transaction
+                                .getAmount()
                         )
                 );
             }
@@ -258,20 +306,31 @@ public class ReportService {
         List<FinancialSeriesResponse> result =
             new ArrayList<>();
 
-        currentDate = startDate;
+        currentDate =
+            startDate;
 
-        while (!currentDate.isAfter(endDate)) {
+        while (
+            !currentDate.isAfter(
+                endDate
+            )
+        ) {
 
             result.add(
                 new FinancialSeriesResponse(
                     currentDate,
-                    incomeByDate.get(currentDate),
-                    expenseByDate.get(currentDate)
+                    incomeByDate.get(
+                        currentDate
+                    ),
+                    expenseByDate.get(
+                        currentDate
+                    )
                 )
             );
 
             currentDate =
-                currentDate.plusDays(1);
+                currentDate.plusDays(
+                    1
+                );
         }
 
         return result;
@@ -309,12 +368,18 @@ public class ReportService {
             startDate == null
             || endDate == null
         ) {
+
             throw new BusinessException(
                 "A data inicial e a data final são obrigatórias."
             );
         }
 
-        if (startDate.isAfter(endDate)) {
+        if (
+            startDate.isAfter(
+                endDate
+            )
+        ) {
+
             throw new BusinessException(
                 "A data inicial não pode ser posterior à data final."
             );
@@ -323,8 +388,11 @@ public class ReportService {
         if (
             startDate
                 .plusYears(2)
-                .isBefore(endDate)
+                .isBefore(
+                    endDate
+                )
         ) {
+
             throw new BusinessException(
                 "O período máximo permitido para o relatório é de 2 anos."
             );

@@ -1,6 +1,7 @@
 package br.com.prestify.entity;
 
 import br.com.prestify.enums.Role;
+
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -10,7 +11,9 @@ import java.time.LocalDateTime;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(
+        strategy = GenerationType.IDENTITY
+    )
     private Long id;
 
     @Column(
@@ -42,6 +45,21 @@ public class User {
         nullable = false
     )
     private Boolean active = true;
+
+    /*
+     * Versão utilizada para invalidar
+     * JWTs antigos.
+     *
+     * Mantemos nullable no banco inicialmente
+     * para facilitar a migração dos usuários
+     * que já existem.
+     *
+     * Valores null são tratados como 0.
+     */
+    @Column(
+        name = "token_version"
+    )
+    private Long tokenVersion = 0L;
 
     @ManyToOne(
         fetch = FetchType.LAZY,
@@ -82,6 +100,10 @@ public class User {
         if (active == null) {
             active = true;
         }
+
+        if (tokenVersion == null) {
+            tokenVersion = 0L;
+        }
     }
 
     @PreUpdate
@@ -89,6 +111,10 @@ public class User {
 
         updatedAt =
             LocalDateTime.now();
+
+        if (tokenVersion == null) {
+            tokenVersion = 0L;
+        }
     }
 
     public Long getId() {
@@ -96,7 +122,7 @@ public class User {
     }
 
     public void setId(
-        Long id
+            Long id
     ) {
         this.id = id;
     }
@@ -106,7 +132,7 @@ public class User {
     }
 
     public void setName(
-        String name
+            String name
     ) {
         this.name = name;
     }
@@ -116,7 +142,7 @@ public class User {
     }
 
     public void setEmail(
-        String email
+            String email
     ) {
         this.email = email;
     }
@@ -126,7 +152,7 @@ public class User {
     }
 
     public void setPassword(
-        String password
+            String password
     ) {
         this.password = password;
     }
@@ -136,7 +162,7 @@ public class User {
     }
 
     public void setRole(
-        Role role
+            Role role
     ) {
         this.role = role;
     }
@@ -146,9 +172,29 @@ public class User {
     }
 
     public void setActive(
-        Boolean active
+            Boolean active
     ) {
         this.active = active;
+    }
+
+    public Long getTokenVersion() {
+
+        return tokenVersion == null
+            ? 0L
+            : tokenVersion;
+    }
+
+    public void setTokenVersion(
+            Long tokenVersion
+    ) {
+        this.tokenVersion =
+            tokenVersion;
+    }
+
+    public void incrementTokenVersion() {
+
+        this.tokenVersion =
+            getTokenVersion() + 1;
     }
 
     public Organization getOrganization() {
@@ -156,7 +202,7 @@ public class User {
     }
 
     public void setOrganization(
-        Organization organization
+            Organization organization
     ) {
         this.organization =
             organization;

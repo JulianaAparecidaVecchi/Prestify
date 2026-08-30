@@ -15,6 +15,12 @@ import org.springframework.data.repository.query.Param;
 public interface StockMovementRepository
         extends JpaRepository<StockMovement, Long> {
 
+    Page<StockMovement>
+        findByOrganizationIdOrderByCreatedAtDesc(
+            Long organizationId,
+            Pageable pageable
+        );
+
     @Query("""
         SELECT m
         FROM StockMovement m

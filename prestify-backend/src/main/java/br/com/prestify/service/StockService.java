@@ -50,6 +50,7 @@ public class StockService {
         this.currentUserService = currentUserService;
     }
 
+    @Transactional(readOnly = true)
     public Page<StockResponse> list(
             String search,
             Boolean active,
@@ -57,7 +58,10 @@ public class StockService {
             int size
     ) {
 
-        validatePagination(page, size);
+        validatePagination(
+            page,
+            size
+        );
 
         Long organizationId =
             currentUserService.getOrganizationId();
@@ -79,9 +83,18 @@ public class StockService {
                     )
                 )
             )
-            .map(this::toStockResponse);
+            .map(
+                this::toStockResponse
+            );
     }
 
+    /*
+     * Não é readOnly porque produtos antigos
+     * podem ainda não possuir um registro em
+     * stocks. Nesse caso o estoque inicial
+     * precisa ser criado.
+     */
+    @Transactional
     public StockResponse getByProductId(
             Long productId
     ) {
@@ -102,10 +115,15 @@ public class StockService {
                     organizationId
                 )
                 .orElseGet(
-                    () -> createInitialStock(product)
+                    () ->
+                        createInitialStock(
+                            product
+                        )
                 );
 
-        return toStockResponse(stock);
+        return toStockResponse(
+            stock
+        );
     }
 
     @Transactional
@@ -122,20 +140,33 @@ public class StockService {
                 organizationId
             );
 
-        if (!Boolean.TRUE.equals(product.getActive())) {
+        if (
+            !Boolean.TRUE.equals(
+                product.getActive()
+            )
+        ) {
+
             throw new BusinessException(
                 "Não é possível movimentar o estoque de um produto inativo."
             );
         }
 
+        /*
+         * A movimentação utiliza uma consulta
+         * com PESSIMISTIC_WRITE para impedir
+         * alterações simultâneas no saldo.
+         */
         Stock stock =
             stockRepository
-                .findByProductIdAndOrganizationId(
+                .findByProductIdAndOrganizationIdForUpdate(
                     product.getId(),
                     organizationId
                 )
                 .orElseGet(
-                    () -> createInitialStock(product)
+                    () ->
+                        createInitialStock(
+                            product
+                        )
                 );
 
         Integer previousQuantity =
@@ -151,8 +182,14 @@ public class StockService {
         StockMovement movement =
             new StockMovement();
 
-        movement.setProduct(product);
-        movement.setType(request.getType());
+        movement.setProduct(
+            product
+        );
+
+        movement.setType(
+            request.getType()
+        );
+
         movement.setQuantity(
             request.getQuantity()
         );
@@ -172,18 +209,25 @@ public class StockService {
         );
 
         User currentUser =
-            currentUserService.getCurrentUser();
+            currentUserService
+                .getCurrentUser();
 
-        movement.setUser(currentUser);
+        movement.setUser(
+            currentUser
+        );
 
         movement.setOrganization(
             currentUser.getOrganization()
         );
 
-        stock.setQuantity(newQuantity);
+        stock.setQuantity(
+            newQuantity
+        );
 
         Stock savedStock =
-            stockRepository.save(stock);
+            stockRepository.save(
+                stock
+            );
 
         StockMovement savedMovement =
             stockMovementRepository.save(
@@ -191,11 +235,16 @@ public class StockService {
             );
 
         return new StockMovementResult(
-            toStockResponse(savedStock),
-            toMovementResponse(savedMovement)
+            toStockResponse(
+                savedStock
+            ),
+            toMovementResponse(
+                savedMovement
+            )
         );
     }
 
+    @Transactional(readOnly = true)
     public Page<StockMovementResponse> listMovements(
             Long productId,
             StockMovementType type,
@@ -205,13 +254,19 @@ public class StockService {
             int size
     ) {
 
-        validatePagination(page, size);
+        validatePagination(
+            page,
+            size
+        );
 
         if (
             start != null
             && end != null
-            && !start.isBefore(end)
+            && !start.isBefore(
+                end
+            )
         ) {
+
             throw new BusinessException(
                 "A data inicial deve ser anterior à data final."
             );
@@ -221,6 +276,7 @@ public class StockService {
             currentUserService.getOrganizationId();
 
         if (productId != null) {
+
             findProduct(
                 productId,
                 organizationId
@@ -243,7 +299,9 @@ public class StockService {
                     )
                 )
             )
-            .map(this::toMovementResponse);
+            .map(
+                this::toMovementResponse
+            );
     }
 
     private Integer calculateNewQuantity(
@@ -253,6 +311,7 @@ public class StockService {
     ) {
 
         if (type == null) {
+
             throw new BusinessException(
                 "O tipo da movimentação é obrigatório."
             );
@@ -268,11 +327,13 @@ public class StockService {
                     + movementQuantity;
 
             case EXIT -> {
+
                 newQuantity =
                     currentQuantity
                     - movementQuantity;
 
                 if (newQuantity < 0) {
+
                     throw new BusinessException(
                         "Estoque insuficiente para realizar esta saída."
                     );
@@ -296,15 +357,24 @@ public class StockService {
             Product product
     ) {
 
-        Stock stock = new Stock();
+        Stock stock =
+            new Stock();
 
-        stock.setProduct(product);
-        stock.setQuantity(0);
+        stock.setProduct(
+            product
+        );
+
+        stock.setQuantity(
+            0
+        );
+
         stock.setOrganization(
             product.getOrganization()
         );
 
-        return stockRepository.save(stock);
+        return stockRepository.save(
+            stock
+        );
     }
 
     private Product findProduct(
@@ -395,6 +465,7 @@ public class StockService {
             value == null
             || value.isBlank()
         ) {
+
             return null;
         }
 
@@ -407,6 +478,7 @@ public class StockService {
     ) {
 
         if (page < 0) {
+
             throw new BusinessException(
                 "A página não pode ser negativa."
             );
@@ -416,6 +488,7 @@ public class StockService {
             size < 1
             || size > 100
         ) {
+
             throw new BusinessException(
                 "O tamanho da página deve estar entre 1 e 100."
             );

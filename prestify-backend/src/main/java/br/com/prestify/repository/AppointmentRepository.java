@@ -22,6 +22,12 @@ public interface AppointmentRepository
             Long organizationId
         );
 
+    Page<Appointment>
+        findByOrganizationIdOrderByCreatedAtDesc(
+            Long organizationId,
+            Pageable pageable
+        );
+
     @Query("""
         SELECT a
         FROM Appointment a
