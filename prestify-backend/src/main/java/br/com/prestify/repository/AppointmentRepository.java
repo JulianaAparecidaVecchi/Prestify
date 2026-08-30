@@ -88,4 +88,66 @@ public interface AppointmentRepository
         @Param("ignoredAppointmentId")
         Long ignoredAppointmentId
     );
+
+    @Query("""
+        SELECT COUNT(a)
+        FROM Appointment a
+        WHERE a.organization.id = :organizationId
+        AND a.startTime >= :start
+        AND a.startTime < :end
+        AND a.status NOT IN (
+            br.com.prestify.enums.AppointmentStatus.CANCELLED,
+            br.com.prestify.enums.AppointmentStatus.NO_SHOW
+        )
+        """)
+    long countAppointmentsInPeriod(
+        @Param("organizationId")
+        Long organizationId,
+
+        @Param("start")
+        LocalDateTime start,
+
+        @Param("end")
+        LocalDateTime end
+    );
+
+    @Query("""
+        SELECT COUNT(a)
+        FROM Appointment a
+        WHERE a.organization.id = :organizationId
+        AND a.startTime >= :start
+        AND a.startTime < :end
+        """)
+    long countAllAppointmentsInPeriod(
+        @Param("organizationId")
+        Long organizationId,
+
+        @Param("start")
+        LocalDateTime start,
+
+        @Param("end")
+        LocalDateTime end
+    );
+
+    @Query("""
+        SELECT COUNT(a)
+        FROM Appointment a
+        WHERE a.organization.id = :organizationId
+        AND a.startTime >= :start
+        AND a.startTime < :end
+        AND a.status = :status
+        """)
+    long countAppointmentsByStatusInPeriod(
+        @Param("organizationId")
+        Long organizationId,
+
+        @Param("start")
+        LocalDateTime start,
+
+        @Param("end")
+        LocalDateTime end,
+
+        @Param("status")
+        AppointmentStatus status
+    );
 }

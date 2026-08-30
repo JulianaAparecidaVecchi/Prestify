@@ -6,6 +6,7 @@ import br.com.prestify.enums.FinancialType;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -103,6 +104,26 @@ public interface FinancialRepository
 
         @Param("status")
         FinancialStatus status,
+
+        @Param("startDate")
+        LocalDate startDate,
+
+        @Param("endDate")
+        LocalDate endDate
+    );
+
+    @Query("""
+        SELECT f
+        FROM FinancialTransaction f
+        WHERE f.organization.id = :organizationId
+        AND f.status = br.com.prestify.enums.FinancialStatus.PAID
+        AND f.dueDate >= :startDate
+        AND f.dueDate <= :endDate
+        ORDER BY f.dueDate ASC, f.id ASC
+        """)
+    List<FinancialTransaction> findPaidInPeriod(
+        @Param("organizationId")
+        Long organizationId,
 
         @Param("startDate")
         LocalDate startDate,

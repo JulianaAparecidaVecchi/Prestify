@@ -64,4 +64,8 @@ public interface ClientRepository
 
         Pageable pageable
     );
+
+    long countByOrganizationIdAndActiveTrue(
+        Long organizationId
+    );
 }

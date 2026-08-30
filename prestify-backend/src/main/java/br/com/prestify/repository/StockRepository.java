@@ -48,4 +48,16 @@ public interface StockRepository
 
         Pageable pageable
     );
+
+    @Query("""
+        SELECT COUNT(s)
+        FROM Stock s
+        WHERE s.organization.id = :organizationId
+        AND s.product.active = true
+        AND s.quantity <= s.product.minimumStock
+        """)
+    long countLowStockProducts(
+        @Param("organizationId")
+        Long organizationId
+    );
 }
