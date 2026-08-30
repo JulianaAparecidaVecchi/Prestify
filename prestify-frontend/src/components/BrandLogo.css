@@ -1,0 +1,92 @@
+.brand-logo {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.brand-logo img {
+  display: block;
+  object-fit: contain;
+}
+
+/* SIDEBAR / DASHBOARD */
+.brand-logo-sidebar {
+  width: 185px;
+  height: 78px;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+
+  overflow: visible;
+}
+
+.brand-logo-sidebar img {
+  position: static;
+
+  width: 175px;
+  height: auto;
+
+  transform: none;
+}
+
+/* LOGIN */
+.brand-logo-login {
+  width: 360px;
+  height: 175px;
+
+  overflow: hidden;
+}
+
+.brand-logo-login img {
+  position: absolute;
+
+  width: 350px;
+  height: auto;
+
+  top: 54%;
+  left: 50%;
+
+  transform:
+    translate(-50%, -50%);
+}
+
+/* RECUPERAÇÃO DE SENHA */
+.brand-logo-recovery {
+  width: 270px;
+  height: 130px;
+
+  overflow: hidden;
+}
+
+.brand-logo-recovery img {
+  position: absolute;
+
+  width: 260px;
+  height: auto;
+
+  top: 54%;
+  left: 50%;
+
+  transform:
+    translate(-50%, -50%);
+}
+
+@media (max-width: 600px) {
+  .brand-logo-login {
+    width: 290px;
+    height: 145px;
+  }
+
+  .brand-logo-login img {
+    width: 280px;
+  }
+
+  .brand-logo-recovery {
+    width: 225px;
+    height: 110px;
+  }
+
+  .brand-logo-recovery img {
+    width: 215px;
+  }
+}
