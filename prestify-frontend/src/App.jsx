@@ -14,6 +14,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 
 import DashboardPage from './pages/dashboard/DashboardPage'
+import AppointmentPage from './pages/appointments/AppointmentPage'
 
 import ModulePlaceholderPage from './pages/common/ModulePlaceholderPage'
 
@@ -73,7 +74,7 @@ function App() {
           <Route
             path="/agenda"
             element={
-              <ModulePlaceholderPage />
+              <AppointmentPage />
             }
           />
 

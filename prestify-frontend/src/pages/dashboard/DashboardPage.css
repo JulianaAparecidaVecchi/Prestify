@@ -76,6 +76,16 @@
   text-transform: capitalize;
 }
 
+.dashboard-alert {
+  margin-bottom: 20px;
+  padding: 12px 15px;
+  border: 1px solid #efc4c4;
+  border-radius: 10px;
+  background: #fff6f6;
+  color: #a33333;
+  font-size: 13px;
+}
+
 .dashboard-metrics {
   margin-bottom: 26px;
   display: grid;
@@ -90,6 +100,18 @@
   border: 1px solid #ebe8f1;
   border-radius: 14px;
   background: #fff;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.dashboard-metric-card:hover {
+  transform: translateY(-2px);
+  border-color: #ddd3ea;
+  box-shadow:
+    0 8px 24px
+    rgba(66, 38, 100, 0.05);
 }
 
 .dashboard-metric-top {
@@ -155,6 +177,10 @@
 
 .dashboard-panel-header {
   padding-bottom: 17px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
   border-bottom: 1px solid #f0edf4;
 }
 
@@ -168,6 +194,34 @@
   margin: 0;
   color: #96909e;
   font-size: 11px;
+}
+
+.dashboard-refresh-button {
+  width: 35px;
+  height: 35px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e8e2ee;
+  border-radius: 9px;
+  background: #fff;
+  color: #6c42a1;
+  cursor: pointer;
+}
+
+.dashboard-refresh-button:hover {
+  background: #f7f3fb;
+}
+
+.dashboard-refresh-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .dashboard-empty-state {
@@ -214,6 +268,93 @@
   line-height: 1.5;
 }
 
+.dashboard-activity-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-activity-item {
+  padding: 16px 4px;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  border-bottom: 1px solid #f1eef4;
+}
+
+.dashboard-activity-item:last-child {
+  border-bottom: 0;
+}
+
+.dashboard-activity-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.dashboard-activity-icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dashboard-activity-icon-appointment {
+  background: #f2ecfb;
+  color: #6631ae;
+}
+
+.dashboard-activity-icon-financial {
+  background: #eaf7ee;
+  color: #2e8849;
+}
+
+.dashboard-activity-icon-stock {
+  background: #fff4df;
+  color: #aa7117;
+}
+
+.dashboard-activity-icon-default {
+  background: #f1eff3;
+  color: #6b6471;
+}
+
+.dashboard-activity-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.dashboard-activity-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.dashboard-activity-header strong {
+  color: #473b58;
+  font-size: 12px;
+}
+
+.dashboard-activity-header span {
+  flex-shrink: 0;
+  color: #aaa4af;
+  font-size: 10px;
+}
+
+.dashboard-activity-content p {
+  margin: 5px 0 0;
+  color: #8c8595;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .dashboard-financial-list {
   padding-top: 15px;
   display: flex;
@@ -252,6 +393,22 @@
   background: #f4f1f7;
 }
 
+.dashboard-financial-icon-income {
+  background: #edf8f0 !important;
+}
+
+.dashboard-financial-icon-income svg {
+  stroke: #34864c !important;
+}
+
+.dashboard-financial-icon-expense {
+  background: #fbeeee !important;
+}
+
+.dashboard-financial-icon-expense svg {
+  stroke: #aa4545 !important;
+}
+
 .dashboard-financial-label svg {
   width: 18px;
   height: 18px;
@@ -270,6 +427,149 @@
 .dashboard-financial-item strong {
   color: #312652;
   font-size: 13px;
+}
+
+.dashboard-positive {
+  color: #2f8648 !important;
+}
+
+.dashboard-negative {
+  color: #b04444 !important;
+}
+
+.dashboard-financial-summary {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #f0edf4;
+}
+
+.dashboard-financial-summary-header {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dashboard-financial-summary-header span {
+  color: #7a7384;
+  font-size: 11px;
+}
+
+.dashboard-financial-summary-header strong {
+  font-size: 13px;
+}
+
+.dashboard-financial-bar {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f4e5e5;
+}
+
+.dashboard-financial-bar-income {
+  height: 100%;
+  min-width: 0;
+  border-radius: 999px;
+  background: #66b37a;
+  transition: width 0.3s ease;
+}
+
+.dashboard-financial-legend {
+  margin-top: 7px;
+  display: flex;
+  justify-content: space-between;
+  color: #a19aa8;
+  font-size: 9px;
+}
+
+.dashboard-loading {
+  min-height: 450px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-loading p {
+  margin-top: 14px;
+  color: #837c8d;
+  font-size: 13px;
+}
+
+.dashboard-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #ece7f2;
+  border-top-color: #6532ad;
+  border-radius: 50%;
+  animation:
+    dashboard-spin
+    0.75s
+    linear
+    infinite;
+}
+
+@keyframes dashboard-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dashboard-error {
+  min-height: 450px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.dashboard-error-icon {
+  width: 62px;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 15px;
+  background: #fff0f0;
+  color: #aa4141;
+}
+
+.dashboard-error-icon svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dashboard-error h2 {
+  margin: 17px 0 7px;
+  color: #382c48;
+  font-size: 18px;
+}
+
+.dashboard-error p {
+  margin: 0 0 18px;
+  color: #8b8492;
+  font-size: 12px;
+}
+
+.dashboard-error button {
+  min-height: 40px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: 9px;
+  background: #5c2bab;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dashboard-error button:hover {
+  background: #4c2195;
 }
 
 @media (max-width: 1200px) {
@@ -296,5 +596,14 @@
 
   .dashboard-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-panel {
+    padding: 18px;
+  }
+
+  .dashboard-activity-header {
+    flex-direction: column;
+    gap: 4px;
   }
 }

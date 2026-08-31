@@ -9,6 +9,8 @@ import br.com.prestify.service.UserService;
 
 import jakarta.validation.Valid;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 
 import org.springframework.http.HttpStatus;
@@ -58,6 +60,16 @@ public class UserController {
             page,
             size
         );
+    }
+
+    @GetMapping("/professionals")
+    @PreAuthorize(
+        "hasAnyRole('OWNER', 'ADMIN', 'MANAGER', 'EMPLOYEE')"
+    )
+    public List<UserResponse> listProfessionals() {
+
+        return userService
+            .listProfessionals();
     }
 
     @GetMapping("/{id}")

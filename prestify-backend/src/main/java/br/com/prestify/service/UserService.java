@@ -15,6 +15,8 @@ import br.com.prestify.repository.UserRepository;
 
 import br.com.prestify.security.CurrentUserService;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -71,6 +73,20 @@ public class UserService {
         return users.map(
             this::toResponse
         );
+    }
+
+    public List<UserResponse> listProfessionals() {
+
+        Long organizationId =
+            currentUserService.getOrganizationId();
+
+        return userRepository
+            .findByOrganizationIdAndActiveTrueOrderByNameAsc(
+                organizationId
+            )
+            .stream()
+            .map(this::toResponse)
+            .toList();
     }
 
     public UserResponse getById(

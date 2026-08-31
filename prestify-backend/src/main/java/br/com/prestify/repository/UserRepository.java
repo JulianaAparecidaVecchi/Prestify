@@ -3,6 +3,7 @@ package br.com.prestify.repository;
 import br.com.prestify.entity.User;
 import br.com.prestify.enums.Role;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -36,6 +37,10 @@ public interface UserRepository
     long countByOrganizationIdAndRoleAndActiveTrue(
         Long organizationId,
         Role role
+    );
+
+    List<User> findByOrganizationIdAndActiveTrueOrderByNameAsc(
+        Long organizationId
     );
 
     @Query("""
