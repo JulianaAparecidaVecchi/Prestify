@@ -150,9 +150,7 @@ public class Organization {
 
     public Organization() {
 
-        enabledModules.add(
-            SystemModule.SERVICES
-        );
+        enableDefaultModules();
     }
 
     public Organization(
@@ -161,9 +159,7 @@ public class Organization {
 
         this.name = name;
 
-        enabledModules.add(
-            SystemModule.SERVICES
-        );
+        enableDefaultModules();
     }
 
     @PrePersist
@@ -224,8 +220,50 @@ public class Organization {
                 new HashSet<>();
         }
 
+        /*
+         * Serviços é obrigatório.
+         */
         enabledModules.add(
             SystemModule.SERVICES
+        );
+    }
+
+    private void enableDefaultModules() {
+
+        enabledModules.add(
+            SystemModule.AGENDA
+        );
+
+        enabledModules.add(
+            SystemModule.CLIENTS
+        );
+
+        enabledModules.add(
+            SystemModule.SERVICES
+        );
+
+        enabledModules.add(
+            SystemModule.PRODUCTS
+        );
+
+        enabledModules.add(
+            SystemModule.STOCK
+        );
+
+        enabledModules.add(
+            SystemModule.SUPPLIERS
+        );
+
+        enabledModules.add(
+            SystemModule.FINANCIAL
+        );
+
+        enabledModules.add(
+            SystemModule.REPORTS
+        );
+
+        enabledModules.add(
+            SystemModule.USERS
         );
     }
 

@@ -13,6 +13,8 @@ import br.com.prestify.repository.ClientRepository;
 
 import br.com.prestify.security.CurrentUserService;
 
+import br.com.prestify.util.ValidationUtils;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -48,8 +50,12 @@ public class ClientService {
             ClientRepository clientRepository,
             CurrentUserService currentUserService
     ) {
-        this.clientRepository = clientRepository;
-        this.currentUserService = currentUserService;
+
+        this.clientRepository =
+            clientRepository;
+
+        this.currentUserService =
+            currentUserService;
     }
 
     public Page<ClientResponse> list(
@@ -59,10 +65,14 @@ public class ClientService {
             int size
     ) {
 
-        validatePagination(page, size);
+        validatePagination(
+            page,
+            size
+        );
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
 
         String term =
             search == null
@@ -103,10 +113,18 @@ public class ClientService {
     ) {
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
+
+        validateClientData(
+            request.getName(),
+            request.getDocument(),
+            request.getEmail(),
+            request.getPhone()
+        );
 
         String document =
-            normalizeNullable(
+            normalizeDocument(
                 request.getDocument()
             );
 
@@ -116,13 +134,18 @@ public class ClientService {
             null
         );
 
-        Client client = new Client();
+        Client client =
+            new Client();
 
         client.setName(
-            request.getName().trim()
+            request
+                .getName()
+                .trim()
         );
 
-        client.setDocument(document);
+        client.setDocument(
+            document
+        );
 
         client.setEmail(
             normalizeEmail(
@@ -131,7 +154,9 @@ public class ClientService {
         );
 
         client.setPhone(
-            request.getPhone().trim()
+            normalizePhone(
+                request.getPhone()
+            )
         );
 
         client.setBirthDate(
@@ -144,7 +169,9 @@ public class ClientService {
             )
         );
 
-        client.setActive(true);
+        client.setActive(
+            true
+        );
 
         client.setOrganization(
             currentUserService
@@ -153,7 +180,9 @@ public class ClientService {
         );
 
         return toResponse(
-            clientRepository.save(client)
+            clientRepository.save(
+                client
+            )
         );
     }
 
@@ -166,10 +195,18 @@ public class ClientService {
             findClient(id);
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
+
+        validateClientData(
+            request.getName(),
+            request.getDocument(),
+            request.getEmail(),
+            request.getPhone()
+        );
 
         String document =
-            normalizeNullable(
+            normalizeDocument(
                 request.getDocument()
             );
 
@@ -180,10 +217,14 @@ public class ClientService {
         );
 
         client.setName(
-            request.getName().trim()
+            request
+                .getName()
+                .trim()
         );
 
-        client.setDocument(document);
+        client.setDocument(
+            document
+        );
 
         client.setEmail(
             normalizeEmail(
@@ -192,7 +233,9 @@ public class ClientService {
         );
 
         client.setPhone(
-            request.getPhone().trim()
+            normalizePhone(
+                request.getPhone()
+            )
         );
 
         client.setBirthDate(
@@ -206,7 +249,9 @@ public class ClientService {
         );
 
         return toResponse(
-            clientRepository.save(client)
+            clientRepository.save(
+                client
+            )
         );
     }
 
@@ -218,10 +263,14 @@ public class ClientService {
         Client client =
             findClient(id);
 
-        client.setActive(active);
+        client.setActive(
+            active
+        );
 
         return toResponse(
-            clientRepository.save(client)
+            clientRepository.save(
+                client
+            )
         );
     }
 
@@ -235,9 +284,13 @@ public class ClientService {
         /*
          * Exclusão lógica.
          */
-        client.setActive(false);
+        client.setActive(
+            false
+        );
 
-        clientRepository.save(client);
+        clientRepository.save(
+            client
+        );
     }
 
     public byte[] exportCsv(
@@ -260,7 +313,9 @@ public class ClientService {
          * Ajuda o Excel no Windows
          * a reconhecer corretamente acentos.
          */
-        csv.append('\uFEFF');
+        csv.append(
+            '\uFEFF'
+        );
 
         csv.append(
             "ID;Nome;CPF/CNPJ;E-mail;Telefone;"
@@ -275,7 +330,10 @@ public class ClientService {
                 "dd/MM/yyyy"
             );
 
-        for (ClientResponse client : clients) {
+        for (
+            ClientResponse client :
+            clients
+        ) {
 
             appendCsvField(
                 csv,
@@ -295,7 +353,9 @@ public class ClientService {
 
             appendCsvField(
                 csv,
-                client.getDocument()
+                formatDocument(
+                    client.getDocument()
+                )
             );
 
             csv.append(";");
@@ -309,14 +369,17 @@ public class ClientService {
 
             appendCsvField(
                 csv,
-                client.getPhone()
+                formatPhone(
+                    client.getPhone()
+                )
             );
 
             csv.append(";");
 
             appendCsvField(
                 csv,
-                client.getBirthDate() == null
+                client.getBirthDate()
+                    == null
                     ? ""
                     : client
                         .getBirthDate()
@@ -336,7 +399,9 @@ public class ClientService {
                     : "Inativo"
             );
 
-            csv.append("\r\n");
+            csv.append(
+                "\r\n"
+            );
         }
 
         return csv
@@ -367,13 +432,15 @@ public class ClientService {
 
             PDType1Font titleFont =
                 new PDType1Font(
-                    Standard14Fonts.FontName
+                    Standard14Fonts
+                        .FontName
                         .HELVETICA_BOLD
                 );
 
             PDType1Font normalFont =
                 new PDType1Font(
-                    Standard14Fonts.FontName
+                    Standard14Fonts
+                        .FontName
                         .HELVETICA
                 );
 
@@ -386,7 +453,9 @@ public class ClientService {
                         PDRectangle.A4
                     );
 
-                document.addPage(page);
+                document.addPage(
+                    page
+                );
 
                 try (
                     PDPageContentStream content =
@@ -478,15 +547,20 @@ public class ClientService {
 
                     y -= 18;
 
-                    int rowsOnPage = 0;
+                    int rowsOnPage =
+                        0;
 
                     while (
-                        index < clients.size()
-                        && rowsOnPage < 34
+                        index
+                            < clients.size()
+                        && rowsOnPage
+                            < 34
                     ) {
 
                         ClientResponse client =
-                            clients.get(index);
+                            clients.get(
+                                index
+                            );
 
                         content.beginText();
 
@@ -516,7 +590,8 @@ public class ClientService {
 
                         content.showText(
                             pdfText(
-                                client.getName(),
+                                client
+                                    .getName(),
                                 26
                             )
                         );
@@ -528,7 +603,10 @@ public class ClientService {
 
                         content.showText(
                             pdfText(
-                                client.getDocument(),
+                                formatDocument(
+                                    client
+                                        .getDocument()
+                                ),
                                 17
                             )
                         );
@@ -540,7 +618,10 @@ public class ClientService {
 
                         content.showText(
                             pdfText(
-                                client.getPhone(),
+                                formatPhone(
+                                    client
+                                        .getPhone()
+                                ),
                                 18
                             )
                         );
@@ -552,7 +633,8 @@ public class ClientService {
 
                         content.showText(
                             Boolean.TRUE.equals(
-                                client.getActive()
+                                client
+                                    .getActive()
                             )
                                 ? "Ativo"
                                 : "Inativo"
@@ -563,22 +645,29 @@ public class ClientService {
                         y -= 19;
 
                         index++;
+
                         rowsOnPage++;
                     }
                 }
 
             } while (
-                index < clients.size()
+                index
+                    < clients.size()
                 || document
                     .getNumberOfPages()
                     == 0
             );
 
-            document.save(output);
+            document.save(
+                output
+            );
 
-            return output.toByteArray();
+            return output
+                .toByteArray();
 
-        } catch (IOException ex) {
+        } catch (
+            IOException ex
+        ) {
 
             throw new BusinessException(
                 "Não foi possível gerar o PDF de clientes."
@@ -595,18 +684,20 @@ public class ClientService {
         List<ClientResponse> clients =
             new ArrayList<>();
 
-        int pageNumber = 0;
+        int pageNumber =
+            0;
 
         Page<ClientResponse> page;
 
         do {
 
-            page = list(
-                search,
-                active,
-                pageNumber,
-                100
-            );
+            page =
+                list(
+                    search,
+                    active,
+                    pageNumber,
+                    100
+                );
 
             clients.addAll(
                 page.getContent()
@@ -614,9 +705,77 @@ public class ClientService {
 
             pageNumber++;
 
-        } while (page.hasNext());
+        } while (
+            page.hasNext()
+        );
 
         return clients;
+    }
+
+    private void validateClientData(
+            String name,
+            String document,
+            String email,
+            String phone
+    ) {
+
+        if (
+            name == null
+            || name.isBlank()
+        ) {
+
+            throw new BusinessException(
+                "O nome é obrigatório."
+            );
+        }
+
+        if (
+            document != null
+            && !document.isBlank()
+            && !ValidationUtils
+                .isValidCpfOrCnpj(
+                    document
+                )
+        ) {
+
+            throw new BusinessException(
+                "Informe um CPF ou CNPJ válido."
+            );
+        }
+
+        if (
+            !ValidationUtils
+                .isValidPhone(
+                    phone
+                )
+        ) {
+
+            throw new BusinessException(
+                "Informe um telefone válido com DDD."
+            );
+        }
+
+        if (
+            email != null
+            && !email.isBlank()
+            && !isValidEmail(
+                email
+            )
+        ) {
+
+            throw new BusinessException(
+                "Informe um e-mail válido."
+            );
+        }
+    }
+
+    private boolean isValidEmail(
+            String email
+    ) {
+
+        return email.matches(
+            "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+        );
     }
 
     private void appendCsvField(
@@ -629,7 +788,9 @@ public class ClientService {
                 ? ""
                 : value;
 
-        csv.append("\"");
+        csv.append(
+            "\""
+        );
 
         csv.append(
             safeValue.replace(
@@ -638,7 +799,9 @@ public class ClientService {
             )
         );
 
-        csv.append("\"");
+        csv.append(
+            "\""
+        );
     }
 
     private String pdfText(
@@ -650,17 +813,20 @@ public class ClientService {
             value == null
             || value.isBlank()
         ) {
+
             return "-";
         }
 
-        /*
-         * As fontes padrão do PDFBox possuem
-         * conjunto limitado de caracteres.
-         */
         String safe =
             value
-                .replace("\r", " ")
-                .replace("\n", " ");
+                .replace(
+                    "\r",
+                    " "
+                )
+                .replace(
+                    "\n",
+                    " "
+                );
 
         StringBuilder result =
             new StringBuilder();
@@ -678,9 +844,16 @@ public class ClientService {
                 character >= 32
                 && character <= 255
             ) {
-                result.append(character);
+
+                result.append(
+                    character
+                );
+
             } else {
-                result.append("?");
+
+                result.append(
+                    "?"
+                );
             }
         }
 
@@ -733,7 +906,10 @@ public class ClientService {
 
         boolean exists;
 
-        if (currentClientId == null) {
+        if (
+            currentClientId
+                == null
+        ) {
 
             exists =
                 clientRepository
@@ -761,6 +937,34 @@ public class ClientService {
         }
     }
 
+    private String normalizeDocument(
+            String value
+    ) {
+
+        if (
+            value == null
+            || value.isBlank()
+        ) {
+
+            return null;
+        }
+
+        return ValidationUtils
+            .onlyDigits(
+                value
+            );
+    }
+
+    private String normalizePhone(
+            String value
+    ) {
+
+        return ValidationUtils
+            .onlyDigits(
+                value
+            );
+    }
+
     private String normalizeEmail(
             String value
     ) {
@@ -769,6 +973,7 @@ public class ClientService {
             value == null
             || value.isBlank()
         ) {
+
             return null;
         }
 
@@ -785,6 +990,7 @@ public class ClientService {
             value == null
             || value.isBlank()
         ) {
+
             return null;
         }
 
@@ -812,6 +1018,148 @@ public class ClientService {
                 "O tamanho da página deve estar entre 1 e 100."
             );
         }
+    }
+
+    private String formatDocument(
+            String document
+    ) {
+
+        if (
+            document == null
+            || document.isBlank()
+        ) {
+
+            return "";
+        }
+
+        String digits =
+            ValidationUtils
+                .onlyDigits(
+                    document
+                );
+
+        if (
+            digits.length()
+                == 11
+        ) {
+
+            return String.format(
+                "%s.%s.%s-%s",
+                digits.substring(
+                    0,
+                    3
+                ),
+                digits.substring(
+                    3,
+                    6
+                ),
+                digits.substring(
+                    6,
+                    9
+                ),
+                digits.substring(
+                    9,
+                    11
+                )
+            );
+        }
+
+        if (
+            digits.length()
+                == 14
+        ) {
+
+            return String.format(
+                "%s.%s.%s/%s-%s",
+                digits.substring(
+                    0,
+                    2
+                ),
+                digits.substring(
+                    2,
+                    5
+                ),
+                digits.substring(
+                    5,
+                    8
+                ),
+                digits.substring(
+                    8,
+                    12
+                ),
+                digits.substring(
+                    12,
+                    14
+                )
+            );
+        }
+
+        return document;
+    }
+
+    private String formatPhone(
+            String phone
+    ) {
+
+        if (
+            phone == null
+            || phone.isBlank()
+        ) {
+
+            return "";
+        }
+
+        String digits =
+            ValidationUtils
+                .onlyDigits(
+                    phone
+                );
+
+        if (
+            digits.length()
+                == 11
+        ) {
+
+            return String.format(
+                "(%s) %s-%s",
+                digits.substring(
+                    0,
+                    2
+                ),
+                digits.substring(
+                    2,
+                    7
+                ),
+                digits.substring(
+                    7,
+                    11
+                )
+            );
+        }
+
+        if (
+            digits.length()
+                == 10
+        ) {
+
+            return String.format(
+                "(%s) %s-%s",
+                digits.substring(
+                    0,
+                    2
+                ),
+                digits.substring(
+                    2,
+                    6
+                ),
+                digits.substring(
+                    6,
+                    10
+                )
+            );
+        }
+
+        return phone;
     }
 
     private ClientResponse toResponse(

@@ -5,20 +5,35 @@ import {
   Routes,
 } from 'react-router-dom'
 
-import ProtectedRoute from './components/ProtectedRoute'
+import ProtectedRoute
+  from './components/ProtectedRoute'
 
-import AppLayout from './layouts/AppLayout'
+import AppLayout
+  from './layouts/AppLayout'
 
-import LoginPage from './pages/auth/LoginPage'
-import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
-import ResetPasswordPage from './pages/auth/ResetPasswordPage'
+import LoginPage
+  from './pages/auth/LoginPage'
 
-import DashboardPage from './pages/dashboard/DashboardPage'
-import AppointmentPage from './pages/appointments/AppointmentPage'
+import ForgotPasswordPage
+  from './pages/auth/ForgotPasswordPage'
 
-import ModulePlaceholderPage from './pages/common/ModulePlaceholderPage'
+import ResetPasswordPage
+  from './pages/auth/ResetPasswordPage'
 
-import authService from './services/authService'
+import DashboardPage
+  from './pages/dashboard/DashboardPage'
+
+import AppointmentPage
+  from './pages/appointments/AppointmentPage'
+
+import ClientPage
+  from './pages/clients/ClientPage'
+
+import ModulePlaceholderPage
+  from './pages/common/ModulePlaceholderPage'
+
+import authService
+  from './services/authService'
 
 function App() {
   return (
@@ -40,7 +55,9 @@ function App() {
 
         <Route
           path="/login"
-          element={<LoginPage />}
+          element={
+            <LoginPage />
+          }
         />
 
         <Route
@@ -81,7 +98,7 @@ function App() {
           <Route
             path="/clientes"
             element={
-              <ModulePlaceholderPage />
+              <ClientPage />
             }
           />
 
