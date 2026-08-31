@@ -29,6 +29,9 @@ import AppointmentPage
 import ClientPage
   from './pages/clients/ClientPage'
 
+import ServicePage
+  from './pages/services/ServicePage'
+
 import ModulePlaceholderPage
   from './pages/common/ModulePlaceholderPage'
 
@@ -105,7 +108,7 @@ function App() {
           <Route
             path="/servicos"
             element={
-              <ModulePlaceholderPage />
+              <ServicePage />
             }
           />
 
