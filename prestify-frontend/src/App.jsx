@@ -44,6 +44,9 @@ import SupplierPage
 import FinancialPage
   from './pages/financial/FinancialPage'
 
+import ReportPage
+  from './pages/reports/ReportPage'
+
 import ModulePlaceholderPage
   from './pages/common/ModulePlaceholderPage'
 
@@ -70,23 +73,17 @@ function App() {
 
         <Route
           path="/login"
-          element={
-            <LoginPage />
-          }
+          element={<LoginPage />}
         />
 
         <Route
           path="/forgot-password"
-          element={
-            <ForgotPasswordPage />
-          }
+          element={<ForgotPasswordPage />}
         />
 
         <Route
           path="/reset-password"
-          element={
-            <ResetPasswordPage />
-          }
+          element={<ResetPasswordPage />}
         />
 
         <Route
@@ -98,90 +95,63 @@ function App() {
         >
           <Route
             path="/dashboard"
-            element={
-              <DashboardPage />
-            }
+            element={<DashboardPage />}
           />
 
           <Route
             path="/agenda"
-            element={
-              <AppointmentPage />
-            }
+            element={<AppointmentPage />}
           />
 
           <Route
             path="/clientes"
-            element={
-              <ClientPage />
-            }
+            element={<ClientPage />}
           />
 
           <Route
             path="/servicos"
-            element={
-              <ServicePage />
-            }
+            element={<ServicePage />}
           />
 
           <Route
             path="/produtos"
-            element={
-              <ProductPage />
-            }
+            element={<ProductPage />}
           />
 
           <Route
             path="/estoque"
-            element={
-              <StockPage />
-            }
+            element={<StockPage />}
           />
 
           <Route
             path="/fornecedores"
-            element={
-              <SupplierPage />
-            }
+            element={<SupplierPage />}
           />
 
           <Route
             path="/financeiro"
-            element={
-              <FinancialPage />
-            }
+            element={<FinancialPage />}
           />
 
           <Route
             path="/relatorios"
-            element={
-              <ModulePlaceholderPage />
-            }
+            element={<ReportPage />}
           />
 
           <Route
             path="/usuarios"
-            element={
-              <ModulePlaceholderPage />
-            }
+            element={<ModulePlaceholderPage />}
           />
 
           <Route
             path="/configuracoes"
-            element={
-              <ModulePlaceholderPage />
-            }
+            element={<ModulePlaceholderPage />}
           />
         </Route>
 
         <Route
           path="*"
-          element={
-            <Navigate
-              to="/"
-              replace
-            />
-          }
+          element={<Navigate to="/" replace />}
         />
       </Routes>
     </BrowserRouter>
