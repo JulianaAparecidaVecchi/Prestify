@@ -38,6 +38,9 @@ import ProductPage
 import StockPage
   from './pages/stock/StockPage'
 
+import SupplierPage
+  from './pages/suppliers/SupplierPage'
+
 import ModulePlaceholderPage
   from './pages/common/ModulePlaceholderPage'
 
@@ -135,7 +138,7 @@ function App() {
           <Route
             path="/fornecedores"
             element={
-              <ModulePlaceholderPage />
+              <SupplierPage />
             }
           />
 
