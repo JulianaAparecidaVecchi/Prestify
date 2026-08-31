@@ -32,6 +32,9 @@ import ClientPage
 import ServicePage
   from './pages/services/ServicePage'
 
+import ProductPage
+  from './pages/products/ProductPage'
+
 import ModulePlaceholderPage
   from './pages/common/ModulePlaceholderPage'
 
@@ -115,7 +118,7 @@ function App() {
           <Route
             path="/produtos"
             element={
-              <ModulePlaceholderPage />
+              <ProductPage />
             }
           />
 
