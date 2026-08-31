@@ -19,6 +19,9 @@ import br.com.prestify.exception.BusinessException;
 import br.com.prestify.exception.ResourceNotFoundException;
 
 import br.com.prestify.repository.OrganizationRepository;
+import br.com.prestify.repository.UserRepository;
+
+import br.com.prestify.rules.PlanRules;
 
 import br.com.prestify.security.CurrentUserService;
 
@@ -31,6 +34,8 @@ import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.Set;
 
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,19 +45,33 @@ public class SettingsService {
     private final OrganizationRepository
         organizationRepository;
 
+    private final UserRepository
+        userRepository;
+
     private final CurrentUserService
         currentUserService;
 
+    private final FinancialService
+        financialService;
+
     public SettingsService(
             OrganizationRepository organizationRepository,
-            CurrentUserService currentUserService
+            UserRepository userRepository,
+            CurrentUserService currentUserService,
+            FinancialService financialService
     ) {
 
         this.organizationRepository =
             organizationRepository;
 
+        this.userRepository =
+            userRepository;
+
         this.currentUserService =
             currentUserService;
+
+        this.financialService =
+            financialService;
     }
 
     @Transactional(readOnly = true)
@@ -74,23 +93,33 @@ public class SettingsService {
             getCurrentOrganization();
 
         organization.setName(
-            request.getName().trim()
+            request
+                .getName()
+                .trim()
         );
 
         organization.setDocument(
-            normalize(request.getDocument())
+            normalize(
+                request.getDocument()
+            )
         );
 
         organization.setEmail(
-            normalize(request.getEmail())
+            normalize(
+                request.getEmail()
+            )
         );
 
         organization.setPhone(
-            normalize(request.getPhone())
+            normalize(
+                request.getPhone()
+            )
         );
 
         organization.setAddress(
-            normalize(request.getAddress())
+            normalize(
+                request.getAddress()
+            )
         );
 
         organization =
@@ -112,18 +141,64 @@ public class SettingsService {
         Organization organization =
             getCurrentOrganization();
 
-        Set<SystemModule> modules =
-            new HashSet<>(
+        Set<SystemModule>
+            requestedModules =
                 request.getModules()
-            );
+                    == null
+                    ? new HashSet<>()
+                    : new HashSet<>(
+                        request
+                            .getModules()
+                    );
 
-        modules.add(
+        requestedModules.add(
             SystemModule.SERVICES
         );
 
-        organization.setEnabledModules(
-            modules
-        );
+        Set<SystemModule>
+            disallowedModules =
+                PlanRules
+                    .getDisallowedModules(
+                        organization
+                            .getPlan(),
+                        requestedModules
+                    );
+
+        if (
+            !disallowedModules
+                .isEmpty()
+        ) {
+
+            String moduleNames =
+                disallowedModules
+                    .stream()
+                    .map(
+                        this::
+                            formatModuleName
+                    )
+                    .sorted()
+                    .collect(
+                        Collectors
+                            .joining(", ")
+                    );
+
+            throw new BusinessException(
+                "O plano "
+                    + PlanRules
+                        .getDisplayName(
+                            organization
+                                .getPlan()
+                        )
+                    + " não permite os seguintes módulos: "
+                    + moduleNames
+                    + "."
+            );
+        }
+
+        organization
+            .setEnabledModules(
+                requestedModules
+            );
 
         organization =
             organizationRepository.save(
@@ -142,7 +217,8 @@ public class SettingsService {
      */
 
     @Transactional
-    public BillingResponse getBilling() {
+    public BillingResponse
+        getBilling() {
 
         Organization organization =
             getCurrentOrganization();
@@ -155,9 +231,10 @@ public class SettingsService {
         if (changed) {
 
             organization =
-                organizationRepository.save(
-                    organization
-                );
+                organizationRepository
+                    .save(
+                        organization
+                    );
         }
 
         return toBillingResponse(
@@ -166,38 +243,150 @@ public class SettingsService {
     }
 
     @Transactional
-    public BillingResponse updateBilling(
+    public BillingResponse
+        updateBilling(
             BillingUpdateRequest request
-    ) {
+        ) {
+
+        if (
+            request.getPlan()
+                == null
+        ) {
+
+            throw new BusinessException(
+                "Informe o plano."
+            );
+        }
+
+        if (
+            request
+                .getBillingCycle()
+                == null
+        ) {
+
+            throw new BusinessException(
+                "Informe o ciclo de faturamento."
+            );
+        }
 
         Organization organization =
             getCurrentOrganization();
+
+        PlanType currentPlan =
+            organization.getPlan();
+
+        if (currentPlan == null) {
+
+            currentPlan =
+                PlanType.BASIC;
+        }
+
+        PlanType newPlan =
+            request.getPlan();
+
+        validateUserLimitForPlan(
+            organization,
+            newPlan
+        );
 
         LocalDate today =
             LocalDate.now();
 
         boolean planChanged =
-            organization.getPlan()
-                != request.getPlan();
+            currentPlan
+                != newPlan;
 
         boolean cycleChanged =
-            organization.getBillingCycle()
-                != request.getBillingCycle();
+            organization
+                .getBillingCycle()
+                != request
+                    .getBillingCycle();
+
+        boolean billingChanged =
+            planChanged
+                || cycleChanged;
+
+        Set<SystemModule>
+            previousEnabledModules =
+                organization
+                    .getEnabledModules()
+                    == null
+                    ? new HashSet<>()
+                    : new HashSet<>(
+                        organization
+                            .getEnabledModules()
+                    );
+
+        Set<SystemModule>
+            oldAllowedModules =
+                PlanRules
+                    .getAllowedModules(
+                        currentPlan
+                    );
+
+        Set<SystemModule>
+            newAllowedModules =
+                PlanRules
+                    .getAllowedModules(
+                        newPlan
+                    );
+
+        boolean isUpgrade =
+            planChanged
+            &&
+            newAllowedModules.size()
+                > oldAllowedModules.size();
 
         organization.setPlan(
-            request.getPlan()
+            newPlan
         );
 
-        organization.setBillingCycle(
-            request.getBillingCycle()
-        );
+        if (planChanged) {
+
+            if (isUpgrade) {
+
+                Set<SystemModule>
+                    upgradedModules =
+                        new HashSet<>(
+                            previousEnabledModules
+                        );
+
+                upgradedModules.addAll(
+                    newAllowedModules
+                );
+
+                organization
+                    .setEnabledModules(
+                        upgradedModules
+                    );
+
+            } else {
+
+                organization
+                    .setEnabledModules(
+                        PlanRules
+                            .normalizeModules(
+                                newPlan,
+                                previousEnabledModules
+                            )
+                    );
+            }
+        }
+
+        organization
+            .setBillingCycle(
+                request
+                    .getBillingCycle()
+            );
+
+        boolean initializeSubscription =
+            organization
+                .getSubscriptionStartDate()
+                == null;
 
         if (
-            planChanged
-            || cycleChanged
-            || organization
-                .getSubscriptionStartDate()
-                == null
+            billingChanged
+            || initializeSubscription
         ) {
 
             organization
@@ -209,7 +398,8 @@ public class SettingsService {
                 .setNextBillingDate(
                     calculateNextBillingDate(
                         today,
-                        request.getBillingCycle()
+                        request
+                            .getBillingCycle()
                     )
                 );
         }
@@ -230,6 +420,29 @@ public class SettingsService {
             organizationRepository.save(
                 organization
             );
+
+        /*
+         * A cobrança só é criada
+         * quando há uma alteração real
+         * de plano/ciclo ou quando a
+         * assinatura ainda não havia
+         * sido inicializada.
+         *
+         * Apenas salvar novamente a
+         * mesma configuração não cria
+         * uma cobrança duplicada.
+         */
+        if (
+            billingChanged
+            || initializeSubscription
+        ) {
+
+            financialService
+                .createSubscriptionCharge(
+                    organization,
+                    today
+                );
+        }
 
         return toBillingResponse(
             organization
@@ -271,8 +484,13 @@ public class SettingsService {
                 .toUpperCase();
 
         if (
-            !weekStartsOn.equals("MONDAY")
-            && !weekStartsOn.equals("SUNDAY")
+            !weekStartsOn.equals(
+                "MONDAY"
+            )
+            &&
+            !weekStartsOn.equals(
+                "SUNDAY"
+            )
         ) {
 
             throw new BusinessException(
@@ -284,15 +502,21 @@ public class SettingsService {
             getCurrentOrganization();
 
         organization.setTimezone(
-            request.getTimezone().trim()
+            request
+                .getTimezone()
+                .trim()
         );
 
         organization.setDateFormat(
-            request.getDateFormat().trim()
+            request
+                .getDateFormat()
+                .trim()
         );
 
         organization.setTimeFormat(
-            request.getTimeFormat().trim()
+            request
+                .getTimeFormat()
+                .trim()
         );
 
         organization.setWeekStartsOn(
@@ -313,6 +537,50 @@ public class SettingsService {
 
         return toSystemSettingsResponse(
             organization
+        );
+    }
+
+    private void
+        validateUserLimitForPlan(
+            Organization organization,
+            PlanType plan
+        ) {
+
+        long activeUsers =
+            userRepository
+                .countByOrganizationIdAndActiveTrue(
+                    organization
+                        .getId()
+                );
+
+        if (
+            PlanRules
+                .supportsActiveUserCount(
+                    plan,
+                    activeUsers
+                )
+        ) {
+
+            return;
+        }
+
+        int maximumUsers =
+            PlanRules
+                .getMaxActiveUsers(
+                    plan
+                );
+
+        throw new BusinessException(
+            "Não é possível alterar para o plano "
+                + PlanRules
+                    .getDisplayName(
+                        plan
+                    )
+                + ". A empresa possui "
+                + activeUsers
+                + " usuários ativos, mas esse plano permite no máximo "
+                + maximumUsers
+                + ". Desative usuários antes de realizar o downgrade."
         );
     }
 
@@ -343,23 +611,28 @@ public class SettingsService {
 
         return new SystemSettingsResponse(
             valueOrDefault(
-                organization.getTimezone(),
+                organization
+                    .getTimezone(),
                 "America/Sao_Paulo"
             ),
             valueOrDefault(
-                organization.getDateFormat(),
+                organization
+                    .getDateFormat(),
                 "DD/MM/YYYY"
             ),
             valueOrDefault(
-                organization.getTimeFormat(),
+                organization
+                    .getTimeFormat(),
                 "HH:mm"
             ),
             valueOrDefault(
-                organization.getWeekStartsOn(),
+                organization
+                    .getWeekStartsOn(),
                 "MONDAY"
             ),
             valueOrDefault(
-                organization.getCurrency(),
+                organization
+                    .getCurrency(),
                 "BRL"
             )
         );
@@ -381,24 +654,39 @@ public class SettingsService {
         return value;
     }
 
-    private boolean initializeBillingIfNecessary(
+    private boolean
+        initializeBillingIfNecessary(
             Organization organization
-    ) {
+        ) {
 
         boolean changed =
             false;
 
         if (
-            organization.getBillingCycle()
+            organization
+                .getPlan()
                 == null
         ) {
 
-            organization.setBillingCycle(
-                BillingCycle.MONTHLY
+            organization.setPlan(
+                PlanType.BASIC
             );
 
-            changed =
-                true;
+            changed = true;
+        }
+
+        if (
+            organization
+                .getBillingCycle()
+                == null
+        ) {
+
+            organization
+                .setBillingCycle(
+                    BillingCycle.MONTHLY
+                );
+
+            changed = true;
         }
 
         if (
@@ -407,19 +695,21 @@ public class SettingsService {
                 == null
         ) {
 
-            organization.setSubscriptionStatus(
-                SubscriptionStatus.ACTIVE
-            );
+            organization
+                .setSubscriptionStatus(
+                    SubscriptionStatus.ACTIVE
+                );
 
-            changed =
-                true;
+            changed = true;
         }
 
         LocalDate startDate =
             organization
                 .getSubscriptionStartDate();
 
-        if (startDate == null) {
+        if (
+            startDate == null
+        ) {
 
             startDate =
                 LocalDate.now();
@@ -429,8 +719,7 @@ public class SettingsService {
                     startDate
                 );
 
-            changed =
-                true;
+            changed = true;
         }
 
         if (
@@ -448,27 +737,61 @@ public class SettingsService {
                     )
                 );
 
-            changed =
-                true;
+            changed = true;
+        }
+
+        Set<SystemModule>
+            currentModules =
+                organization
+                    .getEnabledModules();
+
+        Set<SystemModule>
+            normalizedModules =
+                PlanRules
+                    .normalizeModules(
+                        organization
+                            .getPlan(),
+                        currentModules
+                    );
+
+        if (
+            currentModules == null
+            ||
+            !new HashSet<>(
+                currentModules
+            ).equals(
+                normalizedModules
+            )
+        ) {
+
+            organization
+                .setEnabledModules(
+                    normalizedModules
+                );
+
+            changed = true;
         }
 
         return changed;
     }
 
-    private LocalDate calculateNextBillingDate(
+    private LocalDate
+        calculateNextBillingDate(
             LocalDate date,
             BillingCycle cycle
-    ) {
+        ) {
 
         if (
             cycle
                 == BillingCycle.YEARLY
         ) {
 
-            return date.plusYears(1);
+            return date
+                .plusYears(1);
         }
 
-        return date.plusMonths(1);
+        return date
+            .plusMonths(1);
     }
 
     private BillingResponse
@@ -478,7 +801,8 @@ public class SettingsService {
 
         return new BillingResponse(
             organization.getPlan(),
-            organization.getBillingCycle(),
+            organization
+                .getBillingCycle(),
             organization
                 .getSubscriptionStatus(),
             organization
@@ -493,29 +817,17 @@ public class SettingsService {
         );
     }
 
-    private BigDecimal calculatePrice(
+    private BigDecimal
+        calculatePrice(
             PlanType plan,
             BillingCycle cycle
-    ) {
+        ) {
 
         BigDecimal monthlyPrice =
-            switch (plan) {
-
-                case BASIC ->
-                    new BigDecimal(
-                        "49.90"
-                    );
-
-                case PRO ->
-                    new BigDecimal(
-                        "99.90"
-                    );
-
-                case PREMIUM ->
-                    new BigDecimal(
-                        "159.90"
-                    );
-            };
+            PlanRules
+                .getMonthlyPrice(
+                    plan
+                );
 
         if (
             cycle
@@ -556,21 +868,13 @@ public class SettingsService {
         ) {
 
         Set<SystemModule> modules =
-            organization
-                .getEnabledModules();
-
-        if (modules == null) {
-            modules = new HashSet<>();
-        }
-
-        modules =
-            new HashSet<>(
-                modules
-            );
-
-        modules.add(
-            SystemModule.SERVICES
-        );
+            PlanRules
+                .normalizeModules(
+                    organization
+                        .getPlan(),
+                    organization
+                        .getEnabledModules()
+                );
 
         return new OrganizationSettingsResponse(
             organization.getId(),
@@ -584,11 +888,47 @@ public class SettingsService {
         );
     }
 
+    private String formatModuleName(
+            SystemModule module
+    ) {
+
+        return switch (module) {
+
+            case AGENDA ->
+                "Agenda";
+
+            case CLIENTS ->
+                "Clientes";
+
+            case SERVICES ->
+                "Serviços";
+
+            case PRODUCTS ->
+                "Produtos";
+
+            case STOCK ->
+                "Estoque";
+
+            case SUPPLIERS ->
+                "Fornecedores";
+
+            case FINANCIAL ->
+                "Financeiro";
+
+            case REPORTS ->
+                "Relatórios";
+
+            case USERS ->
+                "Usuários";
+        };
+    }
+
     private String normalize(
             String value
     ) {
 
         if (value == null) {
+
             return null;
         }
 

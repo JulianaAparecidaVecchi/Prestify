@@ -1,13 +1,18 @@
 package br.com.prestify.service;
 
 import br.com.prestify.dto.auth.AuthMessageResponse;
+import br.com.prestify.dto.auth.AuthSessionResponse;
 import br.com.prestify.dto.auth.ForgotPasswordRequest;
 import br.com.prestify.dto.auth.LoginRequest;
 import br.com.prestify.dto.auth.LoginResponse;
 import br.com.prestify.dto.auth.ResetPasswordRequest;
 
+import br.com.prestify.entity.Organization;
 import br.com.prestify.entity.PasswordResetToken;
 import br.com.prestify.entity.User;
+
+import br.com.prestify.enums.Role;
+import br.com.prestify.enums.SystemModule;
 
 import br.com.prestify.exception.BusinessException;
 import br.com.prestify.exception.InvalidCredentialsException;
@@ -15,17 +20,23 @@ import br.com.prestify.exception.InvalidCredentialsException;
 import br.com.prestify.repository.PasswordResetTokenRepository;
 import br.com.prestify.repository.UserRepository;
 
+import br.com.prestify.rules.PlanRules;
+
 import br.com.prestify.security.JwtService;
 
 import java.time.LocalDateTime;
 
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Value;
+
+import org.springframework.security.core.Authentication;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -40,14 +51,17 @@ public class AuthService {
             AuthService.class
         );
 
-    private final UserRepository userRepository;
+    private final UserRepository
+        userRepository;
 
     private final PasswordResetTokenRepository
         passwordResetTokenRepository;
 
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordEncoder
+        passwordEncoder;
 
-    private final JwtService jwtService;
+    private final JwtService
+        jwtService;
 
     @Value(
         "${prestify.auth.log-reset-token:false}"
@@ -98,17 +112,6 @@ public class AuthService {
                 );
 
         if (
-            !Boolean.TRUE.equals(
-                user.getActive()
-            )
-        ) {
-
-            throw new BusinessException(
-                "Este usuário está desativado."
-            );
-        }
-
-        if (
             !passwordEncoder.matches(
                 request.getPassword(),
                 user.getPassword()
@@ -120,10 +123,33 @@ public class AuthService {
             );
         }
 
+        validateAuthenticatedUser(
+            user
+        );
+
+        Organization organization =
+            user.getOrganization();
+
         String token =
             jwtService.generateToken(
                 user
             );
+
+        Long organizationId =
+            organization != null
+                ? organization.getId()
+                : null;
+
+        String organizationName =
+            organization != null
+                ? organization.getName()
+                : null;
+
+        Set<SystemModule>
+            enabledModules =
+                getCurrentEnabledModules(
+                    user
+                );
 
         return new LoginResponse(
             token,
@@ -132,19 +158,91 @@ public class AuthService {
             user.getName(),
             user.getEmail(),
             user.getRole().name(),
-            user
-                .getOrganization()
-                .getId(),
-            user
-                .getOrganization()
+            organizationId,
+            organizationName,
+            enabledModules
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public AuthSessionResponse
+        getCurrentSession(
+            Authentication authentication
+        ) {
+
+        if (
+            authentication == null
+            ||
+            !authentication
+                .isAuthenticated()
+            ||
+            authentication
                 .getName()
+                == null
+        ) {
+
+            throw new BusinessException(
+                "Usuário não autenticado."
+            );
+        }
+
+        String email =
+            authentication
+                .getName()
+                .trim()
+                .toLowerCase();
+
+        User user =
+            userRepository
+                .findByEmailIgnoreCase(
+                    email
+                )
+                .orElseThrow(
+                    () ->
+                        new BusinessException(
+                            "Usuário autenticado não encontrado."
+                        )
+                );
+
+        validateAuthenticatedUser(
+            user
+        );
+
+        Organization organization =
+            user.getOrganization();
+
+        Long organizationId =
+            organization != null
+                ? organization.getId()
+                : null;
+
+        String organizationName =
+            organization != null
+                ? organization.getName()
+                : null;
+
+        Set<SystemModule>
+            enabledModules =
+                getCurrentEnabledModules(
+                    user
+                );
+
+        return new AuthSessionResponse(
+            user.getId(),
+            user.getName(),
+            user.getEmail(),
+            user.getRole().name(),
+            organizationId,
+            organizationName,
+            enabledModules
         );
     }
 
     @Transactional
-    public AuthMessageResponse forgotPassword(
+    public AuthMessageResponse
+        forgotPassword(
             ForgotPasswordRequest request
-    ) {
+        ) {
 
         String email =
             request
@@ -158,9 +256,6 @@ public class AuthService {
                     email
                 );
 
-        /*
-         * Evita enumeração de contas.
-         */
         if (
             optionalUser.isEmpty()
         ) {
@@ -171,23 +266,15 @@ public class AuthService {
         User user =
             optionalUser.get();
 
-        /*
-         * Também não revelamos externamente
-         * que uma conta existe mas está inativa.
-         */
         if (
-            !Boolean.TRUE.equals(
-                user.getActive()
+            !isUserEligibleForRecovery(
+                user
             )
         ) {
 
             return genericRecoveryResponse();
         }
 
-        /*
-         * Apenas o token de recuperação mais
-         * recente continua utilizável.
-         */
         passwordResetTokenRepository
             .deleteByUserId(
                 user.getId()
@@ -211,16 +298,13 @@ public class AuthService {
             );
 
         passwordResetTokenRepository
-            .save(resetToken);
+            .save(
+                resetToken
+            );
 
-        /*
-         * SOMENTE DESENVOLVIMENTO.
-         *
-         * Em produção essa opção deve ficar
-         * desabilitada e o token deve ser
-         * enviado por e-mail.
-         */
-        if (logResetToken) {
+        if (
+            logResetToken
+        ) {
 
             logger.info(
                 "PASSWORD RESET TOKEN (DEV) para {}: {}",
@@ -233,15 +317,17 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthMessageResponse resetPassword(
+    public AuthMessageResponse
+        resetPassword(
             ResetPasswordRequest request
-    ) {
+        ) {
 
         if (
             !request
                 .getNewPassword()
                 .equals(
-                    request.getConfirmPassword()
+                    request
+                        .getConfirmPassword()
                 )
         ) {
 
@@ -277,7 +363,9 @@ public class AuthService {
             );
 
             passwordResetTokenRepository
-                .save(resetToken);
+                .save(
+                    resetToken
+                );
 
             throw new BusinessException(
                 "O token de recuperação expirou."
@@ -288,8 +376,8 @@ public class AuthService {
             resetToken.getUser();
 
         if (
-            !Boolean.TRUE.equals(
-                user.getActive()
+            !isUserEligibleForRecovery(
+                user
             )
         ) {
 
@@ -312,14 +400,11 @@ public class AuthService {
 
         user.setPassword(
             passwordEncoder.encode(
-                request.getNewPassword()
+                request
+                    .getNewPassword()
             )
         );
 
-        /*
-         * Invalida imediatamente todos
-         * os JWTs emitidos anteriormente.
-         */
         user.incrementTokenVersion();
 
         userRepository.save(
@@ -337,6 +422,150 @@ public class AuthService {
 
         return new AuthMessageResponse(
             "Senha redefinida com sucesso."
+        );
+    }
+
+    private void
+        validateAuthenticatedUser(
+            User user
+        ) {
+
+        if (
+            !Boolean.TRUE.equals(
+                user.getActive()
+            )
+        ) {
+
+            throw new BusinessException(
+                "Este usuário está desativado."
+            );
+        }
+
+        Organization organization =
+            user.getOrganization();
+
+        if (
+            user.getRole()
+                == Role.SUPER_ADMIN
+        ) {
+
+            if (
+                organization != null
+            ) {
+
+                throw new BusinessException(
+                    "A configuração desta conta é inválida."
+                );
+            }
+
+            return;
+        }
+
+        if (
+            organization == null
+        ) {
+
+            throw new BusinessException(
+                "O usuário não possui uma organização válida."
+            );
+        }
+
+        if (
+            !Boolean.TRUE.equals(
+                organization.getActive()
+            )
+        ) {
+
+            throw new BusinessException(
+                "A empresa vinculada a esta conta está desativada."
+            );
+        }
+    }
+
+    private Set<SystemModule>
+        getCurrentEnabledModules(
+            User user
+        ) {
+
+        Set<SystemModule>
+            enabledModules =
+                new HashSet<>();
+
+        Organization organization =
+            user.getOrganization();
+
+        /*
+         * SUPER_ADMIN não possui
+         * módulos operacionais.
+         */
+        if (
+            organization == null
+        ) {
+
+            return enabledModules;
+        }
+
+        /*
+         * Retornamos somente a
+         * interseção entre os módulos
+         * habilitados pela empresa e
+         * os módulos permitidos pelo
+         * plano atual.
+         *
+         * Portanto, mesmo que exista
+         * algum dado legado incorreto,
+         * o frontend nunca receberá
+         * módulos fora do plano.
+         */
+        enabledModules.addAll(
+            PlanRules
+                .normalizeModules(
+                    organization.getPlan(),
+                    organization
+                        .getEnabledModules()
+                )
+        );
+
+        return enabledModules;
+    }
+
+    private boolean
+        isUserEligibleForRecovery(
+            User user
+        ) {
+
+        if (
+            user == null
+            ||
+            !Boolean.TRUE.equals(
+                user.getActive()
+            )
+        ) {
+
+            return false;
+        }
+
+        Organization organization =
+            user.getOrganization();
+
+        if (
+            user.getRole()
+                == Role.SUPER_ADMIN
+        ) {
+
+            return organization
+                == null;
+        }
+
+        if (
+            organization == null
+        ) {
+
+            return false;
+        }
+
+        return Boolean.TRUE.equals(
+            organization.getActive()
         );
     }
 

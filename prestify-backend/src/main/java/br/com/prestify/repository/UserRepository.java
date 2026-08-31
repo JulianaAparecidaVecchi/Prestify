@@ -11,14 +11,16 @@ import org.springframework.data.domain.Pageable;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+
 import org.springframework.data.repository.query.Param;
 
 public interface UserRepository
         extends JpaRepository<User, Long> {
 
-    Optional<User> findByEmailIgnoreCase(
-        String email
-    );
+    Optional<User>
+        findByEmailIgnoreCase(
+            String email
+        );
 
     boolean existsByEmailIgnoreCase(
         String email
@@ -29,27 +31,60 @@ public interface UserRepository
         Long id
     );
 
-    Optional<User> findByIdAndOrganizationId(
-        Long id,
-        Long organizationId
-    );
+    Optional<User>
+        findByIdAndOrganizationId(
+            Long id,
+            Long organizationId
+        );
+
+    Optional<User>
+        findFirstByOrganizationIdAndRoleOrderByIdAsc(
+            Long organizationId,
+            Role role
+        );
 
     long countByOrganizationIdAndRoleAndActiveTrue(
         Long organizationId,
         Role role
     );
 
-    List<User> findByOrganizationIdAndActiveTrueOrderByNameAsc(
+    long countByOrganizationIdAndActiveTrue(
         Long organizationId
     );
+
+    long countByActiveTrueAndOrganizationIsNotNull();
+
+    List<User>
+        findByOrganizationId(
+            Long organizationId
+        );
+
+    List<User>
+        findByOrganizationIdAndActiveTrueOrderByNameAsc(
+            Long organizationId
+        );
 
     @Query("""
         SELECT u
         FROM User u
         WHERE u.organization.id = :organizationId
         AND (
-            LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%'))
-            OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))
+            LOWER(u.name)
+                LIKE LOWER(
+                    CONCAT(
+                        '%',
+                        :search,
+                        '%'
+                    )
+                )
+            OR LOWER(u.email)
+                LIKE LOWER(
+                    CONCAT(
+                        '%',
+                        :search,
+                        '%'
+                    )
+                )
         )
         """)
     Page<User> search(

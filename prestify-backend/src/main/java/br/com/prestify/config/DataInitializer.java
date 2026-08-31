@@ -1,9 +1,7 @@
 package br.com.prestify.config;
 
-import br.com.prestify.entity.Organization;
 import br.com.prestify.entity.User;
 import br.com.prestify.enums.Role;
-import br.com.prestify.repository.OrganizationRepository;
 import br.com.prestify.repository.UserRepository;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -18,35 +16,34 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Configuration
 public class DataInitializer {
 
-    @Value("${prestify.initial-data.enabled:false}")
+    @Value(
+        "${prestify.initial-data.enabled:false}"
+    )
     private boolean initialDataEnabled;
 
-    @Value("${prestify.initial-data.owner-name:Administrador}")
-    private String ownerName;
+    @Value(
+        "${prestify.initial-data.super-admin-name:Administrador Prestify}"
+    )
+    private String superAdminName;
 
-    @Value("${prestify.initial-data.owner-email:}")
-    private String ownerEmail;
+    @Value(
+        "${prestify.initial-data.super-admin-email:}"
+    )
+    private String superAdminEmail;
 
-    @Value("${prestify.initial-data.owner-password:}")
-    private String ownerPassword;
-
-    @Value("${prestify.initial-data.organization-name:Prestify Demo}")
-    private String organizationName;
+    @Value(
+        "${prestify.initial-data.super-admin-password:}"
+    )
+    private String superAdminPassword;
 
     @Bean
     public CommandLineRunner initializeData(
-            OrganizationRepository organizationRepository,
             UserRepository userRepository,
             PasswordEncoder passwordEncoder
     ) {
 
         return args -> {
 
-            /*
-             * Em produção, a criação automática
-             * do usuário inicial pode ser
-             * completamente desativada.
-             */
             if (!initialDataEnabled) {
 
                 System.out.println(
@@ -59,14 +56,10 @@ public class DataInitializer {
             validateInitialConfiguration();
 
             String normalizedEmail =
-                ownerEmail
+                superAdminEmail
                     .trim()
                     .toLowerCase();
 
-            /*
-             * Não recria o OWNER caso ele já
-             * exista no banco.
-             */
             if (
                 userRepository
                     .existsByEmailIgnoreCase(
@@ -75,109 +68,95 @@ public class DataInitializer {
             ) {
 
                 System.out.println(
-                    "Usuário OWNER inicial já existe."
+                    "SUPER_ADMIN inicial já existe."
                 );
 
                 return;
             }
 
-            Organization organization =
-                new Organization(
-                    organizationName.trim()
-                );
-
-            organization =
-                organizationRepository.save(
-                    organization
-                );
-
-            User owner =
+            User superAdmin =
                 new User();
 
-            owner.setName(
-                ownerName.trim()
+            superAdmin.setName(
+                superAdminName.trim()
             );
 
-            owner.setEmail(
+            superAdmin.setEmail(
                 normalizedEmail
             );
 
-            owner.setPassword(
+            superAdmin.setPassword(
                 passwordEncoder.encode(
-                    ownerPassword
+                    superAdminPassword
                 )
             );
 
-            owner.setRole(
-                Role.OWNER
+            superAdmin.setRole(
+                Role.SUPER_ADMIN
             );
 
-            owner.setActive(
+            superAdmin.setActive(
                 true
             );
 
-            owner.setOrganization(
-                organization
+            /*
+             * Usuário da plataforma Prestify
+             * não pertence a empresa cliente.
+             */
+            superAdmin.setOrganization(
+                null
             );
 
             userRepository.save(
-                owner
+                superAdmin
             );
 
             System.out.println(
-                "Usuário OWNER inicial criado com sucesso."
+                "SUPER_ADMIN inicial criado com sucesso."
             );
         };
     }
 
-    private void validateInitialConfiguration() {
+    private void
+        validateInitialConfiguration() {
 
         if (
-            ownerEmail == null
-            || ownerEmail.isBlank()
+            superAdminEmail == null
+            || superAdminEmail.isBlank()
         ) {
 
             throw new IllegalStateException(
-                "PRESTIFY_INITIAL_OWNER_EMAIL deve ser informado quando a inicialização automática estiver habilitada."
+                "PRESTIFY_INITIAL_SUPER_ADMIN_EMAIL deve ser informado quando a inicialização automática estiver habilitada."
             );
         }
 
         if (
-            ownerPassword == null
-            || ownerPassword.isBlank()
+            superAdminPassword == null
+            || superAdminPassword.isBlank()
         ) {
 
             throw new IllegalStateException(
-                "PRESTIFY_INITIAL_OWNER_PASSWORD deve ser informado quando a inicialização automática estiver habilitada."
+                "PRESTIFY_INITIAL_SUPER_ADMIN_PASSWORD deve ser informado quando a inicialização automática estiver habilitada."
             );
         }
 
         if (
-            ownerPassword.length() < 8
+            superAdminPassword.length()
+                < 8
         ) {
 
             throw new IllegalStateException(
-                "A senha do OWNER inicial deve possuir pelo menos 8 caracteres."
+                "A senha do SUPER_ADMIN inicial deve possuir pelo menos 8 caracteres."
             );
         }
 
         if (
-            ownerName == null
-            || ownerName.isBlank()
+            superAdminName == null
+            || superAdminName.isBlank()
         ) {
 
             throw new IllegalStateException(
-                "O nome do OWNER inicial deve ser informado."
-            );
-        }
-
-        if (
-            organizationName == null
-            || organizationName.isBlank()
-        ) {
-
-            throw new IllegalStateException(
-                "O nome da organização inicial deve ser informado."
+                "O nome do SUPER_ADMIN inicial deve ser informado."
             );
         }
     }

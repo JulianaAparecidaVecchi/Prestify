@@ -47,11 +47,71 @@ import FinancialPage
 import ReportPage
   from './pages/reports/ReportPage'
 
-import ModulePlaceholderPage
-  from './pages/common/ModulePlaceholderPage'
+import UserPage
+  from './pages/users/UserPage'
+
+import SettingsPage
+  from './pages/settings/SettingsPage'
+
+import PlatformDashboardPage
+  from './pages/platform/PlatformDashboardPage'
+
+import PlatformOrganizationsPage
+  from './pages/platform/PlatformOrganizationsPage'
+
+import PlatformSubscriptionsPage
+  from './pages/platform/PlatformSubscriptionsPage'
 
 import authService
   from './services/authService'
+
+const organizationRoles = [
+  'OWNER',
+  'ADMIN',
+  'MANAGER',
+  'EMPLOYEE',
+]
+
+function getAuthenticatedHome() {
+  if (
+    !authService
+      .isAuthenticated()
+  ) {
+    return '/login'
+  }
+
+  const user =
+    authService.getUser()
+
+  if (
+    user?.role ===
+    'SUPER_ADMIN'
+  ) {
+    return '/platform'
+  }
+
+  return '/dashboard'
+}
+
+function ModuleRoute({
+  module,
+  children,
+}) {
+  if (
+    !authService.hasModule(
+      module
+    )
+  ) {
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+      />
+    )
+  }
+
+  return children
+}
 
 function App() {
   return (
@@ -62,9 +122,7 @@ function App() {
           element={
             <Navigate
               to={
-                authService.isAuthenticated()
-                  ? '/dashboard'
-                  : '/login'
+                getAuthenticatedHome()
               }
               replace
             />
@@ -73,85 +131,197 @@ function App() {
 
         <Route
           path="/login"
-          element={<LoginPage />}
+          element={
+            <LoginPage />
+          }
         />
 
         <Route
           path="/forgot-password"
-          element={<ForgotPasswordPage />}
+          element={
+            <ForgotPasswordPage />
+          }
         />
 
         <Route
           path="/reset-password"
-          element={<ResetPasswordPage />}
+          element={
+            <ResetPasswordPage />
+          }
         />
+
+        {/* ÁREA DA PLATAFORMA */}
 
         <Route
           element={
-            <ProtectedRoute>
+            <ProtectedRoute
+              allowedRoles={[
+                'SUPER_ADMIN',
+              ]}
+            >
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route
+            path="/platform"
+            element={
+              <PlatformDashboardPage />
+            }
+          />
+
+          <Route
+            path="/platform/organizations"
+            element={
+              <PlatformOrganizationsPage />
+            }
+          />
+
+          <Route
+            path="/platform/subscriptions"
+            element={
+              <PlatformSubscriptionsPage />
+            }
+          />
+        </Route>
+
+        {/* ÁREA DAS EMPRESAS */}
+
+        <Route
+          element={
+            <ProtectedRoute
+              allowedRoles={
+                organizationRoles
+              }
+            >
               <AppLayout />
             </ProtectedRoute>
           }
         >
           <Route
             path="/dashboard"
-            element={<DashboardPage />}
+            element={
+              <DashboardPage />
+            }
           />
 
           <Route
             path="/agenda"
-            element={<AppointmentPage />}
+            element={
+              <ModuleRoute
+                module="AGENDA"
+              >
+                <AppointmentPage />
+              </ModuleRoute>
+            }
           />
 
           <Route
             path="/clientes"
-            element={<ClientPage />}
+            element={
+              <ModuleRoute
+                module="CLIENTS"
+              >
+                <ClientPage />
+              </ModuleRoute>
+            }
           />
 
           <Route
             path="/servicos"
-            element={<ServicePage />}
+            element={
+              <ModuleRoute
+                module="SERVICES"
+              >
+                <ServicePage />
+              </ModuleRoute>
+            }
           />
 
           <Route
             path="/produtos"
-            element={<ProductPage />}
+            element={
+              <ModuleRoute
+                module="PRODUCTS"
+              >
+                <ProductPage />
+              </ModuleRoute>
+            }
           />
 
           <Route
             path="/estoque"
-            element={<StockPage />}
+            element={
+              <ModuleRoute
+                module="STOCK"
+              >
+                <StockPage />
+              </ModuleRoute>
+            }
           />
 
           <Route
             path="/fornecedores"
-            element={<SupplierPage />}
+            element={
+              <ModuleRoute
+                module="SUPPLIERS"
+              >
+                <SupplierPage />
+              </ModuleRoute>
+            }
           />
 
           <Route
             path="/financeiro"
-            element={<FinancialPage />}
+            element={
+              <ModuleRoute
+                module="FINANCIAL"
+              >
+                <FinancialPage />
+              </ModuleRoute>
+            }
           />
 
           <Route
             path="/relatorios"
-            element={<ReportPage />}
+            element={
+              <ModuleRoute
+                module="REPORTS"
+              >
+                <ReportPage />
+              </ModuleRoute>
+            }
           />
 
           <Route
             path="/usuarios"
-            element={<ModulePlaceholderPage />}
+            element={
+              <ModuleRoute
+                module="USERS"
+              >
+                <UserPage />
+              </ModuleRoute>
+            }
           />
 
           <Route
             path="/configuracoes"
-            element={<ModulePlaceholderPage />}
+            element={
+              <SettingsPage />
+            }
           />
         </Route>
 
         <Route
           path="*"
-          element={<Navigate to="/" replace />}
+          element={
+            <Navigate
+              to={
+                getAuthenticatedHome()
+              }
+              replace
+            />
+          }
         />
       </Routes>
     </BrowserRouter>

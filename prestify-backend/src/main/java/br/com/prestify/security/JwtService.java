@@ -35,59 +35,58 @@ public class JwtService {
         Instant now =
             Instant.now();
 
-        JwtClaimsSet claims =
+        JwtClaimsSet.Builder claimsBuilder =
             JwtClaimsSet
                 .builder()
-
                 .issuer(
                     "prestify"
                 )
-
                 .issuedAt(
                     now
                 )
-
                 .expiresAt(
                     now.plus(
                         expiration,
                         ChronoUnit.SECONDS
                     )
                 )
-
                 .subject(
                     user.getEmail()
                 )
-
                 .claim(
                     "userId",
                     user.getId()
                 )
-
                 .claim(
                     "role",
                     user
                         .getRole()
                         .name()
                 )
-
-                .claim(
-                    "organizationId",
-                    user
-                        .getOrganization()
-                        .getId()
-                )
-
-                /*
-                 * Permite invalidar sessões
-                 * anteriores sem manter uma
-                 * blacklist de JWTs.
-                 */
                 .claim(
                     "tokenVersion",
                     user.getTokenVersion()
-                )
+                );
 
-                .build();
+        /*
+         * SUPER_ADMIN não pertence a uma
+         * organização cliente.
+         */
+        if (
+            user.getOrganization()
+                != null
+        ) {
+
+            claimsBuilder.claim(
+                "organizationId",
+                user
+                    .getOrganization()
+                    .getId()
+            );
+        }
+
+        JwtClaimsSet claims =
+            claimsBuilder.build();
 
         return jwtEncoder
             .encode(

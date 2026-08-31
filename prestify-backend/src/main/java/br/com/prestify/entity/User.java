@@ -2,7 +2,19 @@ package br.com.prestify.entity;
 
 import br.com.prestify.enums.Role;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
@@ -46,41 +58,38 @@ public class User {
     )
     private Boolean active = true;
 
-    /*
-     * Versão utilizada para invalidar
-     * JWTs antigos.
-     *
-     * Mantemos nullable no banco inicialmente
-     * para facilitar a migração dos usuários
-     * que já existem.
-     *
-     * Valores null são tratados como 0.
-     */
     @Column(
-        name = "token_version"
+        name = "token_version",
+        nullable = false
     )
     private Long tokenVersion = 0L;
 
+    /*
+     * SUPER_ADMIN não pertence a uma empresa.
+     *
+     * OWNER, ADMIN, MANAGER e EMPLOYEE devem
+     * possuir organização. Essa regra será
+     * garantida na camada de serviço.
+     */
     @ManyToOne(
         fetch = FetchType.LAZY,
-        optional = false
+        optional = true
     )
     @JoinColumn(
         name = "organization_id",
-        nullable = false,
-        foreignKey = @ForeignKey(
-            name = "fk_users_organization"
-        )
+        nullable = true
     )
     private Organization organization;
 
     @Column(
+        name = "created_at",
         nullable = false,
         updatable = false
     )
     private LocalDateTime createdAt;
 
     @Column(
+        name = "updated_at",
         nullable = false
     )
     private LocalDateTime updatedAt;
@@ -94,9 +103,6 @@ public class User {
         LocalDateTime now =
             LocalDateTime.now();
 
-        createdAt = now;
-        updatedAt = now;
-
         if (active == null) {
             active = true;
         }
@@ -104,6 +110,9 @@ public class User {
         if (tokenVersion == null) {
             tokenVersion = 0L;
         }
+
+        createdAt = now;
+        updatedAt = now;
     }
 
     @PreUpdate
@@ -111,10 +120,6 @@ public class User {
 
         updatedAt =
             LocalDateTime.now();
-
-        if (tokenVersion == null) {
-            tokenVersion = 0L;
-        }
     }
 
     public Long getId() {
@@ -179,9 +184,11 @@ public class User {
 
     public Long getTokenVersion() {
 
-        return tokenVersion == null
-            ? 0L
-            : tokenVersion;
+        if (tokenVersion == null) {
+            return 0L;
+        }
+
+        return tokenVersion;
     }
 
     public void setTokenVersion(
@@ -197,7 +204,9 @@ public class User {
             getTokenVersion() + 1;
     }
 
-    public Organization getOrganization() {
+    public Organization
+        getOrganization() {
+
         return organization;
     }
 
@@ -212,7 +221,19 @@ public class User {
         return createdAt;
     }
 
+    public void setCreatedAt(
+            LocalDateTime createdAt
+    ) {
+        this.createdAt = createdAt;
+    }
+
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public void setUpdatedAt(
+            LocalDateTime updatedAt
+    ) {
+        this.updatedAt = updatedAt;
     }
 }

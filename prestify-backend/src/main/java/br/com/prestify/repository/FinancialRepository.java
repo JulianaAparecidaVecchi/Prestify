@@ -1,11 +1,14 @@
 package br.com.prestify.repository;
 
 import br.com.prestify.entity.FinancialTransaction;
+
 import br.com.prestify.enums.FinancialStatus;
 import br.com.prestify.enums.FinancialType;
 
 import java.math.BigDecimal;
+
 import java.time.LocalDate;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -14,10 +17,14 @@ import org.springframework.data.domain.Pageable;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+
 import org.springframework.data.repository.query.Param;
 
 public interface FinancialRepository
-        extends JpaRepository<FinancialTransaction, Long> {
+        extends JpaRepository<
+            FinancialTransaction,
+            Long
+        > {
 
     Optional<FinancialTransaction>
         findByIdAndOrganizationId(
@@ -31,13 +38,20 @@ public interface FinancialRepository
             Pageable pageable
         );
 
+    boolean
+        existsByOrganizationIdAndExternalReference(
+            Long organizationId,
+            String externalReference
+        );
+
     /*
      * Listagem geral do financeiro.
      *
-     * O filtro de período permanece baseado
-     * na data de vencimento, pois esta tela
-     * representa os lançamentos financeiros
-     * e seus vencimentos.
+     * O filtro de período permanece
+     * baseado na data de vencimento,
+     * pois esta tela representa os
+     * lançamentos financeiros e seus
+     * vencimentos.
      */
     @Query("""
         SELECT f
@@ -47,9 +61,21 @@ public interface FinancialRepository
         AND (
             :search IS NULL
             OR LOWER(f.description)
-                LIKE LOWER(CONCAT('%', :search, '%'))
+                LIKE LOWER(
+                    CONCAT(
+                        '%',
+                        :search,
+                        '%'
+                    )
+                )
             OR LOWER(f.category)
-                LIKE LOWER(CONCAT('%', :search, '%'))
+                LIKE LOWER(
+                    CONCAT(
+                        '%',
+                        :search,
+                        '%'
+                    )
+                )
         )
 
         AND (
@@ -72,43 +98,45 @@ public interface FinancialRepository
             OR f.dueDate <= :endDate
         )
         """)
-    Page<FinancialTransaction> search(
-        @Param("organizationId")
-        Long organizationId,
+    Page<FinancialTransaction>
+        search(
+            @Param(
+                "organizationId"
+            )
+            Long organizationId,
 
-        @Param("search")
-        String search,
+            @Param("search")
+            String search,
 
-        @Param("type")
-        FinancialType type,
+            @Param("type")
+            FinancialType type,
 
-        @Param("status")
-        FinancialStatus status,
+            @Param("status")
+            FinancialStatus status,
 
-        @Param("startDate")
-        LocalDate startDate,
+            @Param("startDate")
+            LocalDate startDate,
 
-        @Param("endDate")
-        LocalDate endDate,
+            @Param("endDate")
+            LocalDate endDate,
 
-        Pageable pageable
-    );
+            Pageable pageable
+        );
 
     /*
      * Totais financeiros:
      *
      * PAID
-     *     -> utiliza paymentDate
+     * -> utiliza paymentDate
      *
      * PENDING
-     *     -> utiliza dueDate
-     *
-     * Dessa forma, valores realizados entram
-     * no fluxo de caixa na data em que foram
-     * efetivamente pagos/recebidos.
+     * -> utiliza dueDate
      */
     @Query("""
-        SELECT COALESCE(SUM(f.amount), 0)
+        SELECT COALESCE(
+            SUM(f.amount),
+            0
+        )
         FROM FinancialTransaction f
         WHERE f.organization.id = :organizationId
         AND f.type = :type
@@ -142,7 +170,9 @@ public interface FinancialRepository
         )
         """)
     BigDecimal sumByTypeAndStatus(
-        @Param("organizationId")
+        @Param(
+            "organizationId"
+        )
         Long organizationId,
 
         @Param("type")
@@ -160,10 +190,6 @@ public interface FinancialRepository
 
     /*
      * Fluxo financeiro realizado.
-     *
-     * Como são apenas lançamentos PAID,
-     * o período e a ordenação utilizam
-     * paymentDate.
      */
     @Query("""
         SELECT f
@@ -174,16 +200,21 @@ public interface FinancialRepository
         AND f.paymentDate IS NOT NULL
         AND f.paymentDate >= :startDate
         AND f.paymentDate <= :endDate
-        ORDER BY f.paymentDate ASC, f.id ASC
+        ORDER BY
+            f.paymentDate ASC,
+            f.id ASC
         """)
-    List<FinancialTransaction> findPaidInPeriod(
-        @Param("organizationId")
-        Long organizationId,
+    List<FinancialTransaction>
+        findPaidInPeriod(
+            @Param(
+                "organizationId"
+            )
+            Long organizationId,
 
-        @Param("startDate")
-        LocalDate startDate,
+            @Param("startDate")
+            LocalDate startDate,
 
-        @Param("endDate")
-        LocalDate endDate
-    );
+            @Param("endDate")
+            LocalDate endDate
+        );
 }

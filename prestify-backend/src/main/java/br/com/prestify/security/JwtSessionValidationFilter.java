@@ -1,6 +1,11 @@
 package br.com.prestify.security;
 
+import br.com.prestify.entity.Organization;
 import br.com.prestify.entity.User;
+
+import br.com.prestify.enums.Role;
+
+import br.com.prestify.repository.OrganizationRepository;
 import br.com.prestify.repository.UserRepository;
 
 import jakarta.servlet.FilterChain;
@@ -25,13 +30,22 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class JwtSessionValidationFilter
         extends OncePerRequestFilter {
 
-    private final UserRepository userRepository;
+    private final UserRepository
+        userRepository;
+
+    private final OrganizationRepository
+        organizationRepository;
 
     public JwtSessionValidationFilter(
-            UserRepository userRepository
+            UserRepository userRepository,
+            OrganizationRepository organizationRepository
     ) {
+
         this.userRepository =
             userRepository;
+
+        this.organizationRepository =
+            organizationRepository;
     }
 
     @Override
@@ -46,11 +60,6 @@ public class JwtSessionValidationFilter
                 .getContext()
                 .getAuthentication();
 
-        /*
-         * Rotas públicas ou requisições que ainda
-         * não possuem um JWT autenticado passam
-         * normalmente para o restante da cadeia.
-         */
         if (
             !(authentication
                 instanceof JwtAuthenticationToken jwtAuthentication)
@@ -71,7 +80,8 @@ public class JwtSessionValidationFilter
 
         if (
             email == null
-            || email.isBlank()
+            ||
+            email.isBlank()
         ) {
 
             reject(
@@ -85,13 +95,14 @@ public class JwtSessionValidationFilter
 
         User user =
             userRepository
-                .findByEmailIgnoreCase(email)
+                .findByEmailIgnoreCase(
+                    email
+                )
                 .orElse(null);
 
-        /*
-         * Usuário removido ou inexistente.
-         */
-        if (user == null) {
+        if (
+            user == null
+        ) {
 
             reject(
                 response,
@@ -102,10 +113,6 @@ public class JwtSessionValidationFilter
             return;
         }
 
-        /*
-         * Usuário desativado não pode continuar
-         * utilizando um JWT antigo.
-         */
         if (
             !Boolean.TRUE.equals(
                 user.getActive()
@@ -127,11 +134,6 @@ public class JwtSessionValidationFilter
                 "tokenVersion"
             );
 
-        /*
-         * JWTs antigos, criados antes da
-         * implementação do tokenVersion,
-         * são tratados como versão zero.
-         */
         long tokenVersion =
             jwtTokenVersion == null
                 ? 0L
@@ -158,13 +160,10 @@ public class JwtSessionValidationFilter
                     "role"
                 );
 
-        /*
-         * Uma alteração de permissão invalida
-         * imediatamente o JWT com a função antiga.
-         */
         if (
             jwtRole == null
-            || !jwtRole.equals(
+            ||
+            !jwtRole.equals(
                 user
                     .getRole()
                     .name()
@@ -180,25 +179,70 @@ public class JwtSessionValidationFilter
             return;
         }
 
-        Long jwtOrganizationId =
-            getLongClaim(
-                jwtAuthentication,
-                "organizationId"
+        /*
+         * SUPER_ADMIN pertence à plataforma
+         * e não deve possuir organização.
+         */
+        if (
+            user.getRole()
+                == Role.SUPER_ADMIN
+        ) {
+
+            if (
+                user.getOrganization()
+                    != null
+            ) {
+
+                reject(
+                    response,
+                    request,
+                    "Configuração inválida para usuário da plataforma."
+                );
+
+                return;
+            }
+
+            filterChain.doFilter(
+                request,
+                response
             );
+
+            return;
+        }
+
+        /*
+         * Todos os usuários de empresas
+         * precisam pertencer a uma organização.
+         */
+        if (
+            user.getOrganization()
+                == null
+        ) {
+
+            reject(
+                response,
+                request,
+                "O usuário não possui uma organização válida."
+            );
+
+            return;
+        }
 
         Long currentOrganizationId =
             user
                 .getOrganization()
                 .getId();
 
-        /*
-         * Também impedimos que uma sessão antiga
-         * continue válida caso o usuário mude
-         * de organização.
-         */
+        Long jwtOrganizationId =
+            getLongClaim(
+                jwtAuthentication,
+                "organizationId"
+            );
+
         if (
             jwtOrganizationId == null
-            || !jwtOrganizationId.equals(
+            ||
+            !jwtOrganizationId.equals(
                 currentOrganizationId
             )
         ) {
@@ -207,6 +251,46 @@ public class JwtSessionValidationFilter
                 response,
                 request,
                 "A organização da conta foi alterada. Faça login novamente."
+            );
+
+            return;
+        }
+
+        /*
+         * A organização é consultada diretamente
+         * no banco. Assim não dependemos de carregar
+         * a associação LAZY do User dentro do filtro.
+         */
+        Organization organization =
+            organizationRepository
+                .findById(
+                    currentOrganizationId
+                )
+                .orElse(null);
+
+        if (
+            organization == null
+        ) {
+
+            reject(
+                response,
+                request,
+                "A organização da conta não existe mais."
+            );
+
+            return;
+        }
+
+        if (
+            !Boolean.TRUE.equals(
+                organization.getActive()
+            )
+        ) {
+
+            reject(
+                response,
+                request,
+                "A empresa vinculada a esta conta está desativada."
             );
 
             return;
@@ -230,11 +314,18 @@ public class JwtSessionValidationFilter
                     claimName
                 );
 
-        if (value == null) {
+        if (
+            value == null
+        ) {
+
             return null;
         }
 
-        if (value instanceof Number number) {
+        if (
+            value
+                instanceof Number number
+        ) {
+
             return number.longValue();
         }
 
@@ -244,7 +335,9 @@ public class JwtSessionValidationFilter
                 value.toString()
             );
 
-        } catch (NumberFormatException ex) {
+        } catch (
+            NumberFormatException ex
+        ) {
 
             return null;
         }
@@ -256,10 +349,6 @@ public class JwtSessionValidationFilter
             String message
     ) throws IOException {
 
-        /*
-         * Remove explicitamente a autenticação
-         * inválida do contexto.
-         */
         SecurityContextHolder
             .clearContext();
 
@@ -280,7 +369,9 @@ public class JwtSessionValidationFilter
             + "\"status\":401,"
             + "\"error\":\"Unauthorized\","
             + "\"message\":\""
-            + escapeJson(message)
+            + escapeJson(
+                message
+            )
             + "\","
             + "\"path\":\""
             + escapeJson(
@@ -291,14 +382,19 @@ public class JwtSessionValidationFilter
 
         response
             .getWriter()
-            .write(json);
+            .write(
+                json
+            );
     }
 
     private String escapeJson(
             String value
     ) {
 
-        if (value == null) {
+        if (
+            value == null
+        ) {
+
             return "";
         }
 

@@ -1,5 +1,9 @@
 package br.com.prestify.dto.auth;
 
+import br.com.prestify.enums.SystemModule;
+
+import java.util.Set;
+
 public class LoginResponse {
 
     private String token;
@@ -10,6 +14,7 @@ public class LoginResponse {
     private String role;
     private Long organizationId;
     private String organizationName;
+    private Set<SystemModule> enabledModules;
 
     public LoginResponse(
             String token,
@@ -19,7 +24,8 @@ public class LoginResponse {
             String email,
             String role,
             Long organizationId,
-            String organizationName
+            String organizationName,
+            Set<SystemModule> enabledModules
     ) {
         this.token = token;
         this.tokenType = tokenType;
@@ -29,6 +35,7 @@ public class LoginResponse {
         this.role = role;
         this.organizationId = organizationId;
         this.organizationName = organizationName;
+        this.enabledModules = enabledModules;
     }
 
     public String getToken() {
@@ -61,5 +68,11 @@ public class LoginResponse {
 
     public String getOrganizationName() {
         return organizationName;
+    }
+
+    public Set<SystemModule>
+        getEnabledModules() {
+
+        return enabledModules;
     }
 }

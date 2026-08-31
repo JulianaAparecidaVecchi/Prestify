@@ -1,6 +1,7 @@
 package br.com.prestify.controller;
 
 import br.com.prestify.dto.auth.AuthMessageResponse;
+import br.com.prestify.dto.auth.AuthSessionResponse;
 import br.com.prestify.dto.auth.ForgotPasswordRequest;
 import br.com.prestify.dto.auth.LoginRequest;
 import br.com.prestify.dto.auth.LoginResponse;
@@ -12,6 +13,9 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
 
+import org.springframework.security.core.Authentication;
+
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,24 +25,43 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private final AuthService authService;
+    private final AuthService
+        authService;
 
     public AuthController(
             AuthService authService
     ) {
+
         this.authService =
             authService;
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(
+    public ResponseEntity<LoginResponse>
+        login(
             @Valid
             @RequestBody
             LoginRequest request
-    ) {
+        ) {
 
         return ResponseEntity.ok(
-            authService.login(request)
+            authService.login(
+                request
+            )
+        );
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<AuthSessionResponse>
+        getCurrentSession(
+            Authentication authentication
+        ) {
+
+        return ResponseEntity.ok(
+            authService
+                .getCurrentSession(
+                    authentication
+                )
         );
     }
 
@@ -52,7 +75,9 @@ public class AuthController {
 
         return ResponseEntity.ok(
             authService
-                .forgotPassword(request)
+                .forgotPassword(
+                    request
+                )
         );
     }
 
@@ -66,7 +91,9 @@ public class AuthController {
 
         return ResponseEntity.ok(
             authService
-                .resetPassword(request)
+                .resetPassword(
+                    request
+                )
         );
     }
 }

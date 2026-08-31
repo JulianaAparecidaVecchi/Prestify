@@ -8,9 +8,12 @@ import br.com.prestify.dto.financial.FinancialUpdateRequest;
 
 import br.com.prestify.entity.Client;
 import br.com.prestify.entity.FinancialTransaction;
+import br.com.prestify.entity.Organization;
 import br.com.prestify.entity.Supplier;
 import br.com.prestify.entity.User;
 
+import br.com.prestify.enums.BillingCycle;
+import br.com.prestify.enums.FinancialSource;
 import br.com.prestify.enums.FinancialStatus;
 import br.com.prestify.enums.FinancialType;
 
@@ -21,10 +24,15 @@ import br.com.prestify.repository.ClientRepository;
 import br.com.prestify.repository.FinancialRepository;
 import br.com.prestify.repository.SupplierRepository;
 
+import br.com.prestify.rules.PlanRules;
+
 import br.com.prestify.security.CurrentUserService;
 
 import java.math.BigDecimal;
+
 import java.time.LocalDate;
+
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,10 +44,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class FinancialService {
 
-    private final FinancialRepository financialRepository;
-    private final ClientRepository clientRepository;
-    private final SupplierRepository supplierRepository;
-    private final CurrentUserService currentUserService;
+    private final FinancialRepository
+        financialRepository;
+
+    private final ClientRepository
+        clientRepository;
+
+    private final SupplierRepository
+        supplierRepository;
+
+    private final CurrentUserService
+        currentUserService;
 
     public FinancialService(
             FinancialRepository financialRepository,
@@ -60,6 +75,12 @@ public class FinancialService {
         this.currentUserService =
             currentUserService;
     }
+
+    /*
+     * =========================
+     * LANÇAMENTO MANUAL
+     * =========================
+     */
 
     @Transactional
     public FinancialResponse create(
@@ -145,6 +166,14 @@ public class FinancialService {
             null
         );
 
+        transaction.setSource(
+            FinancialSource.MANUAL
+        );
+
+        transaction.setExternalReference(
+            null
+        );
+
         transaction.setCreatedBy(
             currentUser
         );
@@ -158,6 +187,160 @@ public class FinancialService {
             financialRepository.save(
                 transaction
             )
+        );
+    }
+
+    /*
+     * =========================
+     * COBRANÇA DA ASSINATURA
+     * =========================
+     */
+
+    @Transactional
+    public void createSubscriptionCharge(
+            Organization organization,
+            LocalDate chargeDate
+    ) {
+
+        if (
+            organization == null
+            || organization.getId()
+                == null
+        ) {
+
+            throw new BusinessException(
+                "Não foi possível gerar a cobrança da assinatura."
+            );
+        }
+
+        if (chargeDate == null) {
+
+            chargeDate =
+                LocalDate.now();
+        }
+
+        String reference =
+            buildSubscriptionReference(
+                organization,
+                chargeDate
+            );
+
+        /*
+         * A referência agora representa
+         * um evento individual de
+         * cobrança.
+         *
+         * Mantemos a verificação para
+         * respeitar a unicidade da
+         * referência no banco.
+         */
+        boolean alreadyExists =
+            financialRepository
+                .existsByOrganizationIdAndExternalReference(
+                    organization.getId(),
+                    reference
+                );
+
+        if (alreadyExists) {
+
+            return;
+        }
+
+        BigDecimal amount =
+            calculateSubscriptionPrice(
+                organization
+            );
+
+        String planName =
+            PlanRules
+                .getDisplayName(
+                    organization
+                        .getPlan()
+                );
+
+        String cycleName =
+            organization
+                .getBillingCycle()
+                == BillingCycle.YEARLY
+                    ? "Anual"
+                    : "Mensal";
+
+        FinancialTransaction transaction =
+            new FinancialTransaction();
+
+        transaction.setDescription(
+            "Assinatura Prestify - Plano "
+                + planName
+        );
+
+        transaction.setType(
+            FinancialType.EXPENSE
+        );
+
+        transaction.setAmount(
+            amount
+        );
+
+        transaction.setCategory(
+            "Assinatura Prestify"
+        );
+
+        transaction.setStatus(
+            FinancialStatus.PENDING
+        );
+
+        transaction.setPaymentMethod(
+            null
+        );
+
+        transaction.setPaymentDate(
+            null
+        );
+
+        transaction.setDueDate(
+            chargeDate
+        );
+
+        transaction.setSupplier(
+            null
+        );
+
+        transaction.setClient(
+            null
+        );
+
+        transaction.setNotes(
+            "Cobrança automática da assinatura Prestify. "
+                + "Plano: "
+                + planName
+                + ". Ciclo: "
+                + cycleName
+                + "."
+        );
+
+        transaction.setSource(
+            FinancialSource.SUBSCRIPTION
+        );
+
+        transaction.setExternalReference(
+            reference
+        );
+
+        /*
+         * Cobranças da plataforma não
+         * foram criadas manualmente por
+         * um usuário da empresa.
+         */
+        transaction.setCreatedBy(
+            null
+        );
+
+        transaction.setOrganization(
+            organization
+        );
+
+        financialRepository.save(
+            transaction
         );
     }
 
@@ -230,10 +413,11 @@ public class FinancialService {
     }
 
     @Transactional(readOnly = true)
-    public FinancialSummaryResponse getSummary(
+    public FinancialSummaryResponse
+        getSummary(
             LocalDate startDate,
             LocalDate endDate
-    ) {
+        ) {
 
         validateDateRange(
             startDate,
@@ -311,9 +495,20 @@ public class FinancialService {
             );
 
         if (
+            transaction.getSource()
+                == FinancialSource.SUBSCRIPTION
+        ) {
+
+            throw new BusinessException(
+                "Cobranças da assinatura Prestify não podem ser editadas manualmente."
+            );
+        }
+
+        if (
             transaction.getStatus()
                 != FinancialStatus.PENDING
         ) {
+
             throw new BusinessException(
                 "Somente lançamentos pendentes podem ser editados."
             );
@@ -383,10 +578,11 @@ public class FinancialService {
     }
 
     @Transactional
-    public FinancialResponse changeStatus(
+    public FinancialResponse
+        changeStatus(
             Long id,
             FinancialStatusRequest request
-    ) {
+        ) {
 
         Long organizationId =
             currentUserService
@@ -402,6 +598,7 @@ public class FinancialService {
             transaction.getStatus()
                 != FinancialStatus.PENDING
         ) {
+
             throw new BusinessException(
                 "Este lançamento financeiro já foi finalizado."
             );
@@ -411,8 +608,27 @@ public class FinancialService {
             request.getStatus()
                 == FinancialStatus.PENDING
         ) {
+
             throw new BusinessException(
                 "O lançamento já está pendente."
+            );
+        }
+
+        /*
+         * Cobrança automática pode ser
+         * marcada como paga, mas não
+         * cancelada pela empresa.
+         */
+        if (
+            transaction.getSource()
+                == FinancialSource.SUBSCRIPTION
+            &&
+            request.getStatus()
+                == FinancialStatus.CANCELLED
+        ) {
+
+            throw new BusinessException(
+                "Cobranças da assinatura Prestify não podem ser canceladas manualmente."
             );
         }
 
@@ -422,9 +638,11 @@ public class FinancialService {
         ) {
 
             if (
-                request.getPaymentMethod()
+                request
+                    .getPaymentMethod()
                     == null
             ) {
+
                 throw new BusinessException(
                     "A forma de pagamento é obrigatória para concluir o pagamento."
                 );
@@ -436,6 +654,7 @@ public class FinancialService {
             if (
                 paymentDate == null
             ) {
+
                 paymentDate =
                     LocalDate.now();
             }
@@ -445,7 +664,8 @@ public class FinancialService {
             );
 
             transaction.setPaymentMethod(
-                request.getPaymentMethod()
+                request
+                    .getPaymentMethod()
             );
 
             transaction.setPaymentDate(
@@ -499,9 +719,20 @@ public class FinancialService {
             );
 
         if (
+            transaction.getSource()
+                == FinancialSource.SUBSCRIPTION
+        ) {
+
+            throw new BusinessException(
+                "Cobranças da assinatura Prestify não podem ser excluídas."
+            );
+        }
+
+        if (
             transaction.getStatus()
                 == FinancialStatus.PAID
         ) {
+
             throw new BusinessException(
                 "Um lançamento pago não pode ser excluído."
             );
@@ -511,6 +742,7 @@ public class FinancialService {
             transaction.getStatus()
                 == FinancialStatus.CANCELLED
         ) {
+
             return;
         }
 
@@ -529,6 +761,65 @@ public class FinancialService {
         financialRepository.save(
             transaction
         );
+    }
+
+    private BigDecimal
+        calculateSubscriptionPrice(
+            Organization organization
+        ) {
+
+        BigDecimal monthlyPrice =
+            PlanRules
+                .getMonthlyPrice(
+                    organization
+                        .getPlan()
+                );
+
+        if (
+            organization
+                .getBillingCycle()
+                == BillingCycle.YEARLY
+        ) {
+
+            return monthlyPrice
+                .multiply(
+                    BigDecimal.TEN
+                );
+        }
+
+        return monthlyPrice;
+    }
+
+    /*
+     * Cada chamada legítima deste
+     * método representa uma nova
+     * cobrança.
+     *
+     * O UUID evita que uma empresa
+     * que volte ao mesmo plano no
+     * mesmo dia seja confundida com
+     * uma cobrança anterior.
+     */
+    private String
+        buildSubscriptionReference(
+            Organization organization,
+            LocalDate chargeDate
+        ) {
+
+        return "PRESTIFY_SUBSCRIPTION_"
+            + organization.getId()
+            + "_"
+            + organization
+                .getPlan()
+                .name()
+            + "_"
+            + organization
+                .getBillingCycle()
+                .name()
+            + "_"
+            + chargeDate
+            + "_"
+            + UUID.randomUUID();
     }
 
     private BigDecimal getTotal(
@@ -560,27 +851,30 @@ public class FinancialService {
             Supplier supplier
     ) {
 
-        if (
-            type == null
-        ) {
+        if (type == null) {
+
             throw new BusinessException(
                 "O tipo financeiro é obrigatório."
             );
         }
 
         if (
-            type == FinancialType.INCOME
+            type
+                == FinancialType.INCOME
             && supplier != null
         ) {
+
             throw new BusinessException(
                 "Uma receita não pode estar vinculada a um fornecedor."
             );
         }
 
         if (
-            type == FinancialType.EXPENSE
+            type
+                == FinancialType.EXPENSE
             && client != null
         ) {
+
             throw new BusinessException(
                 "Uma despesa não pode estar vinculada a um cliente."
             );
@@ -592,9 +886,8 @@ public class FinancialService {
             Long organizationId
     ) {
 
-        if (
-            clientId == null
-        ) {
+        if (clientId == null) {
+
             return null;
         }
 
@@ -616,6 +909,7 @@ public class FinancialService {
                 client.getActive()
             )
         ) {
+
             throw new BusinessException(
                 "O cliente informado está inativo."
             );
@@ -624,14 +918,14 @@ public class FinancialService {
         return client;
     }
 
-    private Supplier findSupplierIfPresent(
+    private Supplier
+        findSupplierIfPresent(
             Long supplierId,
             Long organizationId
     ) {
 
-        if (
-            supplierId == null
-        ) {
+        if (supplierId == null) {
+
             return null;
         }
 
@@ -653,6 +947,7 @@ public class FinancialService {
                 supplier.getActive()
             )
         ) {
+
             throw new BusinessException(
                 "O fornecedor informado está inativo."
             );
@@ -661,10 +956,11 @@ public class FinancialService {
         return supplier;
     }
 
-    private FinancialTransaction findTransaction(
+    private FinancialTransaction
+        findTransaction(
             Long id,
             Long organizationId
-    ) {
+        ) {
 
         return financialRepository
             .findByIdAndOrganizationId(
@@ -684,20 +980,31 @@ public class FinancialService {
     ) {
 
         Supplier supplier =
-            transaction.getSupplier();
+            transaction
+                .getSupplier();
 
         Client client =
-            transaction.getClient();
+            transaction
+                .getClient();
+
+        User createdBy =
+            transaction
+                .getCreatedBy();
 
         return new FinancialResponse(
             transaction.getId(),
             transaction.getDescription(),
-            transaction.getType().name(),
+            transaction
+                .getType()
+                .name(),
             transaction.getAmount(),
             transaction.getCategory(),
-            transaction.getStatus().name(),
+            transaction
+                .getStatus()
+                .name(),
 
-            transaction.getPaymentMethod()
+            transaction
+                .getPaymentMethod()
                 == null
                     ? null
                     : transaction
@@ -725,13 +1032,13 @@ public class FinancialService {
 
             transaction.getNotes(),
 
-            transaction
-                .getCreatedBy()
-                .getId(),
+            createdBy == null
+                ? null
+                : createdBy.getId(),
 
-            transaction
-                .getCreatedBy()
-                .getName(),
+            createdBy == null
+                ? "Prestify"
+                : createdBy.getName(),
 
             transaction.getCreatedAt(),
             transaction.getUpdatedAt()
@@ -750,6 +1057,7 @@ public class FinancialService {
                 endDate
             )
         ) {
+
             throw new BusinessException(
                 "A data inicial não pode ser posterior à data final."
             );
@@ -761,9 +1069,8 @@ public class FinancialService {
             int size
     ) {
 
-        if (
-            page < 0
-        ) {
+        if (page < 0) {
+
             throw new BusinessException(
                 "A página não pode ser negativa."
             );
@@ -773,6 +1080,7 @@ public class FinancialService {
             size < 1
             || size > 100
         ) {
+
             throw new BusinessException(
                 "O tamanho da página deve estar entre 1 e 100."
             );
@@ -787,6 +1095,7 @@ public class FinancialService {
             value == null
             || value.isBlank()
         ) {
+
             return null;
         }
 

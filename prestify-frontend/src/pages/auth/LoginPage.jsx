@@ -1,9 +1,17 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import {
+  useEffect,
+  useState,
+} from 'react'
 
-import authService from '../../services/authService'
+import {
+  useNavigate,
+} from 'react-router-dom'
 
-import BrandLogo from '../../components/BrandLogo'
+import authService
+  from '../../services/authService'
+
+import BrandLogo
+  from '../../components/BrandLogo'
 
 import './LoginPage.css'
 
@@ -31,6 +39,21 @@ function LoginPage() {
 
   const [loading, setLoading] =
     useState(false)
+
+  useEffect(() => {
+    const sessionMessage =
+      sessionStorage.getItem(
+        'prestify_session_message'
+      )
+
+    if (sessionMessage) {
+      setError(sessionMessage)
+
+      sessionStorage.removeItem(
+        'prestify_session_message'
+      )
+    }
+  }, [])
 
   const handleSubmit = async (
     event
@@ -69,7 +92,16 @@ function LoginPage() {
         rememberMe
       )
 
-      navigate('/dashboard', {
+      sessionStorage.removeItem(
+        'prestify_session_message'
+      )
+
+      const destination =
+        data.role === 'SUPER_ADMIN'
+          ? '/platform'
+          : '/dashboard'
+
+      navigate(destination, {
         replace: true,
       })
     } catch (error) {
@@ -391,6 +423,7 @@ function CalendarIcon() {
   return (
     <svg viewBox="0 0 24 24">
       <path d="M7 2v3M17 2v3M3.5 9h17M5 4.5h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z" />
+
       <path d="M7 13h3M14 13h3M7 17h3M14 17h3" />
     </svg>
   )
@@ -399,7 +432,12 @@ function CalendarIcon() {
 function UsersIcon() {
   return (
     <svg viewBox="0 0 24 24">
-      <circle cx="9" cy="8" r="4" />
+      <circle
+        cx="9"
+        cy="8"
+        r="4"
+      />
+
       <path d="M2.5 20c.5-4 2.7-6 6.5-6s6 2 6.5 6M16 5.5a3.5 3.5 0 0 1 0 7M17 14c2.7.4 4.2 2.4 4.5 5" />
     </svg>
   )
@@ -417,6 +455,7 @@ function ShieldIcon() {
   return (
     <svg viewBox="0 0 24 24">
       <path d="M12 2 20 5v6c0 5.4-3.3 9.4-8 11-4.7-1.6-8-5.6-8-11V5l8-3Z" />
+
       <path d="m8.5 12 2.2 2.2 4.8-5" />
     </svg>
   )
@@ -425,7 +464,14 @@ function ShieldIcon() {
 function EmailIcon() {
   return (
     <svg viewBox="0 0 24 24">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <rect
+        x="3"
+        y="5"
+        width="18"
+        height="14"
+        rx="2"
+      />
+
       <path d="m4 7 8 6 8-6" />
     </svg>
   )
@@ -434,7 +480,14 @@ function EmailIcon() {
 function LockIcon() {
   return (
     <svg viewBox="0 0 24 24">
-      <rect x="5" y="10" width="14" height="11" rx="2" />
+      <rect
+        x="5"
+        y="10"
+        width="14"
+        height="11"
+        rx="2"
+      />
+
       <path d="M8 10V7a4 4 0 0 1 8 0v3" />
     </svg>
   )
@@ -444,7 +497,12 @@ function EyeIcon() {
   return (
     <svg viewBox="0 0 24 24">
       <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
-      <circle cx="12" cy="12" r="2.5" />
+
+      <circle
+        cx="12"
+        cy="12"
+        r="2.5"
+      />
     </svg>
   )
 }

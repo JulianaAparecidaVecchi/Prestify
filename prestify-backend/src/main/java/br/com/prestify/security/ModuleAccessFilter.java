@@ -1,11 +1,18 @@
 package br.com.prestify.security;
 
 import br.com.prestify.entity.Organization;
+import br.com.prestify.entity.User;
+
+import br.com.prestify.enums.Role;
 import br.com.prestify.enums.SystemModule;
+
 import br.com.prestify.repository.OrganizationRepository;
+
+import br.com.prestify.rules.PlanRules;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -13,6 +20,7 @@ import java.io.IOException;
 import java.util.Set;
 
 import org.springframework.security.core.Authentication;
+
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import org.springframework.stereotype.Component;
@@ -53,14 +61,35 @@ public class ModuleAccessFilter
                 .getContext()
                 .getAuthentication();
 
-        /*
-         * Sem autenticação JWT válida,
-         * deixamos o restante do Spring Security
-         * decidir se a rota é pública ou protegida.
-         */
         if (
             authentication == null
-            || !authentication.isAuthenticated()
+            ||
+            !authentication
+                .isAuthenticated()
+        ) {
+
+            filterChain.doFilter(
+                request,
+                response
+            );
+
+            return;
+        }
+
+        String uri =
+            request.getRequestURI();
+
+        /*
+         * Rotas da administração
+         * da plataforma não fazem
+         * parte dos módulos das
+         * empresas.
+         */
+        if (
+            matchesPath(
+                uri,
+                "/api/platform"
+            )
         ) {
 
             filterChain.doFilter(
@@ -73,15 +102,16 @@ public class ModuleAccessFilter
 
         SystemModule requiredModule =
             resolveRequiredModule(
-                request.getRequestURI()
+                uri
             );
 
         /*
-         * Dashboard, configurações, autenticação
-         * e demais rotas não vinculadas a módulos
-         * configuráveis passam normalmente.
+         * Endpoint sem módulo
+         * operacional associado.
          */
-        if (requiredModule == null) {
+        if (
+            requiredModule == null
+        ) {
 
             filterChain.doFilter(
                 request,
@@ -91,9 +121,142 @@ public class ModuleAccessFilter
             return;
         }
 
+        User currentUser;
+
+        try {
+
+            currentUser =
+                currentUserService
+                    .getCurrentUser();
+
+        } catch (
+            Exception ex
+        ) {
+
+            writeForbidden(
+                response,
+                request,
+                "Não foi possível validar o usuário."
+            );
+
+            return;
+        }
+
         /*
-         * Serviços é o módulo obrigatório
-         * do Prestify.
+         * SUPER_ADMIN pertence à
+         * plataforma Prestify.
+         *
+         * Ele não pode operar os
+         * módulos internos de uma
+         * empresa.
+         */
+        if (
+            currentUser.getRole()
+                == Role.SUPER_ADMIN
+        ) {
+
+            writeForbidden(
+                response,
+                request,
+                "Usuários da plataforma não possuem acesso aos módulos operacionais das empresas."
+            );
+
+            return;
+        }
+
+        Long organizationId;
+
+        try {
+
+            organizationId =
+                currentUserService
+                    .getOrganizationId();
+
+        } catch (
+            Exception ex
+        ) {
+
+            writeForbidden(
+                response,
+                request,
+                "Não foi possível validar a organização."
+            );
+
+            return;
+        }
+
+        Organization organization =
+            organizationRepository
+                .findById(
+                    organizationId
+                )
+                .orElse(null);
+
+        if (
+            organization == null
+        ) {
+
+            writeForbidden(
+                response,
+                request,
+                "Organização não encontrada."
+            );
+
+            return;
+        }
+
+        if (
+            !Boolean.TRUE.equals(
+                organization.getActive()
+            )
+        ) {
+
+            writeForbidden(
+                response,
+                request,
+                "Esta organização está desativada."
+            );
+
+            return;
+        }
+
+        /*
+         * PRIMEIRA PROTEÇÃO:
+         *
+         * O plano precisa permitir
+         * o módulo.
+         */
+        if (
+            !PlanRules
+                .isModuleAllowed(
+                    organization
+                        .getPlan(),
+                    requiredModule
+                )
+        ) {
+
+            writeForbidden(
+                response,
+                request,
+                "O módulo "
+                    + formatModuleName(
+                        requiredModule
+                    )
+                    + " não está disponível no plano "
+                    + PlanRules
+                        .getDisplayName(
+                            organization
+                                .getPlan()
+                        )
+                    + "."
+            );
+
+            return;
+        }
+
+        /*
+         * Serviços é obrigatório
+         * em todos os planos.
          */
         if (
             requiredModule
@@ -108,60 +271,25 @@ public class ModuleAccessFilter
             return;
         }
 
-        Long organizationId;
-
-        try {
-
-            organizationId =
-                currentUserService
-                    .getOrganizationId();
-
-        } catch (Exception ex) {
-
-            writeForbidden(
-                response,
-                request,
-                "Não foi possível validar os módulos da organização."
-            );
-
-            return;
-        }
-
-        if (organizationId == null) {
-
-            writeForbidden(
-                response,
-                request,
-                "Não foi possível validar os módulos da organização."
-            );
-
-            return;
-        }
-
-        Organization organization =
-            organizationRepository
-                .findById(
-                    organizationId
-                )
-                .orElse(null);
-
-        if (organization == null) {
-
-            writeForbidden(
-                response,
-                request,
-                "Organização não encontrada."
-            );
-
-            return;
-        }
-
-        Set<SystemModule> enabledModules =
-            organization.getEnabledModules();
+        /*
+         * SEGUNDA PROTEÇÃO:
+         *
+         * Além de pertencer ao plano,
+         * o OWNER precisa ter deixado
+         * o módulo ativado.
+         */
+        Set<SystemModule>
+            enabledModules =
+                PlanRules
+                    .normalizeModules(
+                        organization
+                            .getPlan(),
+                        organization
+                            .getEnabledModules()
+                    );
 
         if (
-            enabledModules == null
-            || !enabledModules.contains(
+            !enabledModules.contains(
                 requiredModule
             )
         ) {
@@ -170,7 +298,9 @@ public class ModuleAccessFilter
                 response,
                 request,
                 "O módulo "
-                    + requiredModule.name()
+                    + formatModuleName(
+                        requiredModule
+                    )
                     + " está desativado para esta organização."
             );
 
@@ -183,9 +313,10 @@ public class ModuleAccessFilter
         );
     }
 
-    private SystemModule resolveRequiredModule(
+    private SystemModule
+        resolveRequiredModule(
             String uri
-    ) {
+        ) {
 
         if (
             matchesPath(
@@ -193,6 +324,7 @@ public class ModuleAccessFilter
                 "/api/appointments"
             )
         ) {
+
             return SystemModule.AGENDA;
         }
 
@@ -202,6 +334,7 @@ public class ModuleAccessFilter
                 "/api/clients"
             )
         ) {
+
             return SystemModule.CLIENTS;
         }
 
@@ -211,6 +344,7 @@ public class ModuleAccessFilter
                 "/api/services"
             )
         ) {
+
             return SystemModule.SERVICES;
         }
 
@@ -220,6 +354,7 @@ public class ModuleAccessFilter
                 "/api/products"
             )
         ) {
+
             return SystemModule.PRODUCTS;
         }
 
@@ -229,6 +364,7 @@ public class ModuleAccessFilter
                 "/api/stocks"
             )
         ) {
+
             return SystemModule.STOCK;
         }
 
@@ -238,6 +374,7 @@ public class ModuleAccessFilter
                 "/api/suppliers"
             )
         ) {
+
             return SystemModule.SUPPLIERS;
         }
 
@@ -247,6 +384,7 @@ public class ModuleAccessFilter
                 "/api/financial"
             )
         ) {
+
             return SystemModule.FINANCIAL;
         }
 
@@ -256,6 +394,7 @@ public class ModuleAccessFilter
                 "/api/reports"
             )
         ) {
+
             return SystemModule.REPORTS;
         }
 
@@ -265,6 +404,7 @@ public class ModuleAccessFilter
                 "/api/users"
             )
         ) {
+
             return SystemModule.USERS;
         }
 
@@ -276,10 +416,48 @@ public class ModuleAccessFilter
             String basePath
     ) {
 
-        return uri.equals(basePath)
-            || uri.startsWith(
-                basePath + "/"
-            );
+        return uri.equals(
+            basePath
+        )
+        ||
+        uri.startsWith(
+            basePath + "/"
+        );
+    }
+
+    private String formatModuleName(
+            SystemModule module
+    ) {
+
+        return switch (module) {
+
+            case AGENDA ->
+                "Agenda";
+
+            case CLIENTS ->
+                "Clientes";
+
+            case SERVICES ->
+                "Serviços";
+
+            case PRODUCTS ->
+                "Produtos";
+
+            case STOCK ->
+                "Estoque";
+
+            case SUPPLIERS ->
+                "Fornecedores";
+
+            case FINANCIAL ->
+                "Financeiro";
+
+            case REPORTS ->
+                "Relatórios";
+
+            case USERS ->
+                "Usuários";
+        };
     }
 
     private void writeForbidden(
@@ -289,7 +467,8 @@ public class ModuleAccessFilter
     ) throws IOException {
 
         response.setStatus(
-            HttpServletResponse.SC_FORBIDDEN
+            HttpServletResponse
+                .SC_FORBIDDEN
         );
 
         response.setContentType(
@@ -305,25 +484,33 @@ public class ModuleAccessFilter
             + "\"status\":403,"
             + "\"error\":\"Forbidden\","
             + "\"message\":\""
-            + escapeJson(message)
+            + escapeJson(
+                message
+            )
             + "\","
             + "\"path\":\""
             + escapeJson(
-                request.getRequestURI()
+                request
+                    .getRequestURI()
             )
             + "\""
             + "}";
 
         response
             .getWriter()
-            .write(json);
+            .write(
+                json
+            );
     }
 
     private String escapeJson(
             String value
     ) {
 
-        if (value == null) {
+        if (
+            value == null
+        ) {
+
             return "";
         }
 
