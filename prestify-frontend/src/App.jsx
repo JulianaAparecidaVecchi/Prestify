@@ -35,6 +35,9 @@ import ServicePage
 import ProductPage
   from './pages/products/ProductPage'
 
+import StockPage
+  from './pages/stock/StockPage'
+
 import ModulePlaceholderPage
   from './pages/common/ModulePlaceholderPage'
 
@@ -125,7 +128,7 @@ function App() {
           <Route
             path="/estoque"
             element={
-              <ModulePlaceholderPage />
+              <StockPage />
             }
           />
 
