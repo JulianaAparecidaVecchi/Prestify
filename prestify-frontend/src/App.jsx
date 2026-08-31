@@ -41,6 +41,9 @@ import StockPage
 import SupplierPage
   from './pages/suppliers/SupplierPage'
 
+import FinancialPage
+  from './pages/financial/FinancialPage'
+
 import ModulePlaceholderPage
   from './pages/common/ModulePlaceholderPage'
 
@@ -145,7 +148,7 @@ function App() {
           <Route
             path="/financeiro"
             element={
-              <ModulePlaceholderPage />
+              <FinancialPage />
             }
           />
 
