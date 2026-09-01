@@ -1,0 +1,262 @@
+.platform-users-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.platform-users-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.platform-users-heading h1 {
+  margin: 0;
+  color: #171520;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.platform-users-heading p {
+  margin: 6px 0 0;
+  color: #777483;
+  font-size: 14px;
+}
+
+.platform-users-summary {
+  display: grid;
+  grid-template-columns:
+    minmax(220px, 300px);
+  gap: 16px;
+}
+
+.platform-users-card {
+  overflow: hidden;
+  border: 1px solid #ece9f1;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.platform-users-filters {
+  display: flex;
+  align-items: center;
+  justify-content:
+    space-between;
+  gap: 14px;
+  padding: 18px 20px;
+  border-bottom:
+    1px solid #efedf3;
+}
+
+.platform-users-filters select {
+  min-width: 160px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #dedbe5;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #24212b;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.platform-users-filters select:focus {
+  border-color: #7259c9;
+  box-shadow:
+    0 0 0 3px
+    rgba(91, 63, 192, 0.1);
+}
+
+.platform-users-table {
+  width: 100%;
+  min-width: 850px;
+  border-collapse: collapse;
+}
+
+.platform-users-table th {
+  padding: 13px 16px;
+  border-bottom:
+    1px solid #efedf3;
+  background: #faf9fc;
+  color: #777483;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.platform-users-table td {
+  padding: 16px;
+  border-bottom:
+    1px solid #f0eef3;
+  color: #4b4753;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.platform-users-table
+tbody
+tr:last-child
+td {
+  border-bottom: 0;
+}
+
+.platform-users-table
+tbody
+tr:hover {
+  background: #fcfbfd;
+}
+
+.platform-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.platform-user-avatar {
+  display: flex;
+  flex: 0 0 38px;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #eee9fb;
+  color: #5b3fc0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.platform-user-cell
+> div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.platform-user-cell strong {
+  color: #28242f;
+  font-size: 13px;
+}
+
+.platform-user-cell
+> div:last-child
+> span {
+  color: #918d99;
+  font-size: 11px;
+}
+
+.platform-user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.platform-current-user-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #eee9fb;
+  color: #5b3fc0 !important;
+  font-size: 10px !important;
+  font-weight: 700;
+}
+
+.platform-role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #f0ecfb;
+  color: #5b3fc0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.platform-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.platform-user-modal {
+  width: min(620px, 100%);
+}
+
+.platform-user-form {
+  padding: 24px;
+}
+
+.platform-field-error {
+  color: #a53434 !important;
+}
+
+.platform-user-security-note {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 15px;
+  border: 1px solid #e5def8;
+  border-radius: 10px;
+  background: #f8f6fd;
+}
+
+.platform-user-security-icon {
+  display: flex;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #e9e3fa;
+  color: #5b3fc0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.platform-user-security-note
+strong {
+  color: #393344;
+  font-size: 13px;
+}
+
+.platform-user-security-note
+p {
+  margin: 4px 0 0;
+  color: #777181;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 850px) {
+  .platform-users-heading,
+  .platform-users-filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .platform-users-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-users-filters
+  select {
+    width: 100%;
+  }
+}
+
+@media (max-width: 650px) {
+  .platform-user-form {
+    padding: 18px;
+  }
+}

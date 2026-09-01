@@ -98,6 +98,11 @@ const platformMenuItems = [
     label: 'Assinaturas',
     icon: CardIcon,
   },
+  {
+    path: '/platform/users',
+    label: 'Usuários',
+    icon: UserSettingsIcon,
+  },
 ]
 
 const routeTitles = {
@@ -121,17 +126,24 @@ const routeTitles = {
 
   '/platform/subscriptions':
     'Assinaturas',
+
+  '/platform/users':
+    'Usuários da Plataforma',
 }
 
 function AppLayout() {
-  const navigate = useNavigate()
-  const location = useLocation()
+  const navigate =
+    useNavigate()
+
+  const location =
+    useLocation()
 
   const [
     user,
     setUser,
   ] = useState(
-    () => authService.getUser()
+    () =>
+      authService.getUser()
   )
 
   useEffect(() => {
@@ -148,7 +160,8 @@ function AppLayout() {
   }, [])
 
   const isSuperAdmin =
-    user?.role === 'SUPER_ADMIN'
+    user?.role ===
+    'SUPER_ADMIN'
 
   const organizationVisibleMenuItems =
     organizationMenuItems.filter(
@@ -221,7 +234,8 @@ function AppLayout() {
   const handleNotificationClick =
     () => {
       setNotificationMenuOpen(
-        (current) => !current
+        (current) =>
+          !current
       )
 
       setUserMenuOpen(false)
@@ -230,7 +244,8 @@ function AppLayout() {
   const handleUserMenuClick =
     () => {
       setUserMenuOpen(
-        (current) => !current
+        (current) =>
+          !current
       )
 
       setNotificationMenuOpen(
@@ -355,9 +370,15 @@ function AppLayout() {
 
                 return (
                   <NavLink
-                    key={item.path}
-                    to={item.path}
-                    end={item.end}
+                    key={
+                      item.path
+                    }
+                    to={
+                      item.path
+                    }
+                    end={
+                      item.end
+                    }
                     onClick={
                       closeSidebar
                     }
@@ -410,7 +431,9 @@ function AppLayout() {
 
           <div className="sidebar-version">
             Prestify
-            <span>v1.0.0</span>
+            <span>
+              v1.0.0
+            </span>
           </div>
         </div>
       </aside>
@@ -462,9 +485,11 @@ function AppLayout() {
                 >
                   <BellIcon />
 
-                  {unreadCount > 0 && (
+                  {unreadCount >
+                    0 && (
                     <span className="notification-badge">
-                      {unreadCount > 9
+                      {unreadCount >
+                      9
                         ? '9+'
                         : unreadCount}
                     </span>
@@ -693,6 +718,9 @@ function getPageSubtitle(
 
     '/platform/subscriptions':
       'Acompanhe planos, cobranças e assinaturas das empresas clientes',
+
+    '/platform/users':
+      'Gerencie os administradores internos da plataforma Prestify',
   }
 
   return (
@@ -701,7 +729,9 @@ function getPageSubtitle(
   )
 }
 
-function formatRole(role) {
+function formatRole(
+  role
+) {
   const roles = {
     SUPER_ADMIN:
       'Super Administrador',

@@ -38,6 +38,12 @@ public interface UserRepository
         );
 
     Optional<User>
+        findByIdAndOrganizationIsNullAndRole(
+            Long id,
+            Role role
+        );
+
+    Optional<User>
         findFirstByOrganizationIdAndRoleOrderByIdAsc(
             Long organizationId,
             Role role
@@ -53,6 +59,10 @@ public interface UserRepository
     );
 
     long countByActiveTrueAndOrganizationIsNotNull();
+
+    long countByRoleAndOrganizationIsNullAndActiveTrue(
+        Role role
+    );
 
     List<User>
         findByOrganizationId(
@@ -93,6 +103,48 @@ public interface UserRepository
 
         @Param("search")
         String search,
+
+        Pageable pageable
+    );
+
+    @Query("""
+        SELECT u
+        FROM User u
+        WHERE u.organization IS NULL
+        AND u.role = :role
+        AND (
+            :active IS NULL
+            OR u.active = :active
+        )
+        AND (
+            :search = ''
+            OR LOWER(u.name)
+                LIKE LOWER(
+                    CONCAT(
+                        '%',
+                        :search,
+                        '%'
+                    )
+                )
+            OR LOWER(u.email)
+                LIKE LOWER(
+                    CONCAT(
+                        '%',
+                        :search,
+                        '%'
+                    )
+                )
+        )
+        """)
+    Page<User> searchPlatformUsers(
+        @Param("search")
+        String search,
+
+        @Param("role")
+        Role role,
+
+        @Param("active")
+        Boolean active,
 
         Pageable pageable
     );
