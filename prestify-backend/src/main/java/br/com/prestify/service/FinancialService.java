@@ -6,6 +6,7 @@ import br.com.prestify.dto.financial.FinancialStatusRequest;
 import br.com.prestify.dto.financial.FinancialSummaryResponse;
 import br.com.prestify.dto.financial.FinancialUpdateRequest;
 
+import br.com.prestify.entity.Appointment;
 import br.com.prestify.entity.Client;
 import br.com.prestify.entity.FinancialTransaction;
 import br.com.prestify.entity.Organization;
@@ -16,6 +17,7 @@ import br.com.prestify.enums.BillingCycle;
 import br.com.prestify.enums.FinancialSource;
 import br.com.prestify.enums.FinancialStatus;
 import br.com.prestify.enums.FinancialType;
+import br.com.prestify.enums.PaymentMethod;
 
 import br.com.prestify.exception.BusinessException;
 import br.com.prestify.exception.ResourceNotFoundException;
@@ -192,16 +194,132 @@ public class FinancialService {
 
     /*
      * =========================
-     * COBRANÇA ADMINISTRATIVA
+     * RECEITA DE AGENDAMENTO
+     * =========================
+     */
+
+    @Transactional
+    public void createAppointmentIncome(
+            Appointment appointment
+    ) {
+
+        if (
+            appointment == null
+            || appointment.getId() == null
+            || appointment.getOrganization()
+                == null
+            || appointment
+                .getOrganization()
+                .getId() == null
+        ) {
+
+            throw new BusinessException(
+                "Não foi possível gerar a receita do atendimento."
+            );
+        }
+
+        String reference =
+            "PRESTIFY_APPOINTMENT_"
+            + appointment.getId();
+
+        boolean alreadyExists =
+            financialRepository
+                .existsByOrganizationIdAndExternalReference(
+                    appointment
+                        .getOrganization()
+                        .getId(),
+                    reference
+                );
+
+        if (alreadyExists) {
+
+            return;
+        }
+
+        LocalDate paymentDate =
+            LocalDate.now();
+
+        FinancialTransaction transaction =
+            new FinancialTransaction();
+
+        transaction.setDescription(
+            "Serviço realizado - "
+            + appointment
+                .getService()
+                .getName()
+        );
+
+        transaction.setType(
+            FinancialType.INCOME
+        );
+
+        transaction.setAmount(
+            appointment.getPrice()
+        );
+
+        transaction.setCategory(
+            "Serviços"
+        );
+
+        transaction.setStatus(
+            FinancialStatus.PAID
+        );
+
+        transaction.setPaymentMethod(
+            PaymentMethod.OTHER
+        );
+
+        transaction.setPaymentDate(
+            paymentDate
+        );
+
+        transaction.setDueDate(
+            paymentDate
+        );
+
+        transaction.setClient(
+            appointment.getClient()
+        );
+
+        transaction.setSupplier(
+            null
+        );
+
+        transaction.setNotes(
+            "Receita gerada automaticamente "
+            + "pela conclusão do agendamento #"
+            + appointment.getId()
+            + "."
+        );
+
+        transaction.setSource(
+            FinancialSource.APPOINTMENT
+        );
+
+        transaction.setExternalReference(
+            reference
+        );
+
+        transaction.setCreatedBy(
+            currentUserService
+                .getCurrentUser()
+        );
+
+        transaction.setOrganization(
+            appointment
+                .getOrganization()
+        );
+
+        financialRepository.save(
+            transaction
+        );
+    }
+
+    /*
+     * =========================
+     * COBRANÇA MANUAL
      * DA ASSINATURA
      * =========================
-     *
-     * Usada quando plano ou ciclo
-     * são alterados manualmente.
-     *
-     * Cada alteração é um evento
-     * independente, por isso a
-     * referência continua usando UUID.
      */
 
     @Transactional
@@ -210,75 +328,27 @@ public class FinancialService {
             LocalDate chargeDate
     ) {
 
-        validateOrganizationForCharge(
-            organization
-        );
-
-        LocalDate effectiveChargeDate =
-            chargeDate == null
-                ? LocalDate.now()
-                : chargeDate;
-
-        String reference =
-            buildAdministrativeSubscriptionReference(
-                organization,
-                effectiveChargeDate
-            );
-
-        boolean alreadyExists =
-            financialRepository
-                .existsByOrganizationIdAndExternalReference(
-                    organization.getId(),
-                    reference
-                );
-
-        if (alreadyExists) {
-            return;
-        }
-
-        createSubscriptionTransaction(
-            organization,
-            effectiveChargeDate,
-            reference,
-            "Cobrança administrativa da assinatura Prestify."
-        );
-    }
-
-    /*
-     * =========================
-     * COBRANÇA RECORRENTE
-     * =========================
-     *
-     * Para a cobrança automática,
-     * a referência é determinística.
-     *
-     * Uma organização só pode ter
-     * uma cobrança automática para
-     * a mesma data de competência.
-     */
-
-    @Transactional
-    public boolean
-        createRecurringSubscriptionCharge(
-            Organization organization,
-            LocalDate billingDate
+        if (
+            organization == null
+            || organization.getId()
+                == null
         ) {
 
-        validateOrganizationForCharge(
-            organization
-        );
-
-        if (billingDate == null) {
-
             throw new BusinessException(
-                "A data da cobrança recorrente é obrigatória."
+                "Não foi possível gerar a cobrança da assinatura."
             );
         }
 
+        if (chargeDate == null) {
+
+            chargeDate =
+                LocalDate.now();
+        }
+
         String reference =
-            buildRecurringSubscriptionReference(
+            buildSubscriptionReference(
                 organization,
-                billingDate
+                chargeDate
             );
 
         boolean alreadyExists =
@@ -289,25 +359,9 @@ public class FinancialService {
                 );
 
         if (alreadyExists) {
-            return false;
+
+            return;
         }
-
-        createSubscriptionTransaction(
-            organization,
-            billingDate,
-            reference,
-            "Cobrança recorrente automática da assinatura Prestify."
-        );
-
-        return true;
-    }
-
-    private void createSubscriptionTransaction(
-            Organization organization,
-            LocalDate chargeDate,
-            String reference,
-            String originDescription
-    ) {
 
         BigDecimal amount =
             calculateSubscriptionPrice(
@@ -373,13 +427,11 @@ public class FinancialService {
         );
 
         transaction.setNotes(
-            originDescription
-                + " Plano: "
+            "Cobrança automática da assinatura Prestify. "
+                + "Plano: "
                 + planName
                 + ". Ciclo: "
                 + cycleName
-                + ". Competência: "
-                + chargeDate
                 + "."
         );
 
@@ -404,10 +456,18 @@ public class FinancialService {
         );
     }
 
-    private void
-        validateOrganizationForCharge(
-            Organization organization
-        ) {
+    /*
+     * =========================
+     * COBRANÇA RECORRENTE
+     * DA ASSINATURA
+     * =========================
+     */
+
+    @Transactional
+    public void createRecurringSubscriptionCharge(
+            Organization organization,
+            LocalDate billingDate
+    ) {
 
         if (
             organization == null
@@ -416,30 +476,134 @@ public class FinancialService {
         ) {
 
             throw new BusinessException(
-                "Não foi possível gerar a cobrança da assinatura."
+                "Não foi possível gerar a cobrança recorrente da assinatura."
             );
         }
 
-        if (
-            organization.getPlan()
-                == null
-        ) {
+        if (billingDate == null) {
 
             throw new BusinessException(
-                "A organização não possui um plano válido."
+                "A data da cobrança recorrente é obrigatória."
             );
         }
 
-        if (
+        String reference =
+            buildRecurringSubscriptionReference(
+                organization,
+                billingDate
+            );
+
+        boolean alreadyExists =
+            financialRepository
+                .existsByOrganizationIdAndExternalReference(
+                    organization.getId(),
+                    reference
+                );
+
+        /*
+         * A referência recorrente é
+         * determinística. Assim, uma
+         * mesma competência não gera
+         * uma nova cobrança.
+         */
+        if (alreadyExists) {
+
+            return;
+        }
+
+        BigDecimal amount =
+            calculateSubscriptionPrice(
+                organization
+            );
+
+        String planName =
+            PlanRules
+                .getDisplayName(
+                    organization
+                        .getPlan()
+                );
+
+        String cycleName =
             organization
                 .getBillingCycle()
-                == null
-        ) {
+                == BillingCycle.YEARLY
+                    ? "Anual"
+                    : "Mensal";
 
-            throw new BusinessException(
-                "A organização não possui um ciclo de cobrança válido."
-            );
-        }
+        FinancialTransaction transaction =
+            new FinancialTransaction();
+
+        transaction.setDescription(
+            "Assinatura Prestify - Plano "
+                + planName
+        );
+
+        transaction.setType(
+            FinancialType.EXPENSE
+        );
+
+        transaction.setAmount(
+            amount
+        );
+
+        transaction.setCategory(
+            "Assinatura Prestify"
+        );
+
+        transaction.setStatus(
+            FinancialStatus.PENDING
+        );
+
+        transaction.setPaymentMethod(
+            null
+        );
+
+        transaction.setPaymentDate(
+            null
+        );
+
+        transaction.setDueDate(
+            billingDate
+        );
+
+        transaction.setSupplier(
+            null
+        );
+
+        transaction.setClient(
+            null
+        );
+
+        transaction.setNotes(
+            "Cobrança recorrente da assinatura Prestify. "
+                + "Plano: "
+                + planName
+                + ". Ciclo: "
+                + cycleName
+                + ". Competência: "
+                + billingDate
+                + "."
+        );
+
+        transaction.setSource(
+            FinancialSource.SUBSCRIPTION
+        );
+
+        transaction.setExternalReference(
+            reference
+        );
+
+        transaction.setCreatedBy(
+            null
+        );
+
+        transaction.setOrganization(
+            organization
+        );
+
+        financialRepository.save(
+            transaction
+        );
     }
 
     @Transactional(readOnly = true)
@@ -595,10 +759,13 @@ public class FinancialService {
         if (
             transaction.getSource()
                 == FinancialSource.SUBSCRIPTION
+            ||
+            transaction.getSource()
+                == FinancialSource.APPOINTMENT
         ) {
 
             throw new BusinessException(
-                "Cobranças da assinatura Prestify não podem ser editadas manualmente."
+                "Lançamentos automáticos não podem ser editados manualmente."
             );
         }
 
@@ -676,11 +843,10 @@ public class FinancialService {
     }
 
     @Transactional
-    public FinancialResponse
-        changeStatus(
+    public FinancialResponse changeStatus(
             Long id,
             FinancialStatusRequest request
-        ) {
+    ) {
 
         Long organizationId =
             currentUserService
@@ -814,10 +980,13 @@ public class FinancialService {
         if (
             transaction.getSource()
                 == FinancialSource.SUBSCRIPTION
+            ||
+            transaction.getSource()
+                == FinancialSource.APPOINTMENT
         ) {
 
             throw new BusinessException(
-                "Cobranças da assinatura Prestify não podem ser excluídas."
+                "Lançamentos automáticos não podem ser excluídos."
             );
         }
 
@@ -856,10 +1025,15 @@ public class FinancialService {
         );
     }
 
-    private BigDecimal
-        calculateSubscriptionPrice(
+    /*
+     * =========================
+     * MÉTODOS AUXILIARES
+     * =========================
+     */
+
+    private BigDecimal calculateSubscriptionPrice(
             Organization organization
-        ) {
+    ) {
 
         BigDecimal monthlyPrice =
             PlanRules
@@ -883,16 +1057,10 @@ public class FinancialService {
         return monthlyPrice;
     }
 
-    /*
-     * Alterações administrativas de
-     * plano/ciclo continuam sendo
-     * eventos únicos.
-     */
-    private String
-        buildAdministrativeSubscriptionReference(
+    private String buildSubscriptionReference(
             Organization organization,
             LocalDate chargeDate
-        ) {
+    ) {
 
         return "PRESTIFY_SUBSCRIPTION_"
             + organization.getId()
@@ -910,19 +1078,10 @@ public class FinancialService {
             + UUID.randomUUID();
     }
 
-    /*
-     * A referência recorrente não usa
-     * UUID propositalmente.
-     *
-     * A mesma empresa e a mesma
-     * competência sempre resultam na
-     * mesma referência.
-     */
-    private String
-        buildRecurringSubscriptionReference(
+    private String buildRecurringSubscriptionReference(
             Organization organization,
             LocalDate billingDate
-        ) {
+    ) {
 
         return "PRESTIFY_RECURRING_"
             + organization.getId()
@@ -967,8 +1126,7 @@ public class FinancialService {
         }
 
         if (
-            type
-                == FinancialType.INCOME
+            type == FinancialType.INCOME
             && supplier != null
         ) {
 
@@ -978,8 +1136,7 @@ public class FinancialService {
         }
 
         if (
-            type
-                == FinancialType.EXPENSE
+            type == FinancialType.EXPENSE
             && client != null
         ) {
 
@@ -1026,11 +1183,10 @@ public class FinancialService {
         return client;
     }
 
-    private Supplier
-        findSupplierIfPresent(
+    private Supplier findSupplierIfPresent(
             Long supplierId,
             Long organizationId
-        ) {
+    ) {
 
         if (supplierId == null) {
 
@@ -1064,11 +1220,10 @@ public class FinancialService {
         return supplier;
     }
 
-    private FinancialTransaction
-        findTransaction(
+    private FinancialTransaction findTransaction(
             Long id,
             Long organizationId
-        ) {
+    ) {
 
         return financialRepository
             .findByIdAndOrganizationId(
@@ -1102,11 +1257,14 @@ public class FinancialService {
         return new FinancialResponse(
             transaction.getId(),
             transaction.getDescription(),
+
             transaction
                 .getType()
                 .name(),
+
             transaction.getAmount(),
             transaction.getCategory(),
+
             transaction
                 .getStatus()
                 .name(),

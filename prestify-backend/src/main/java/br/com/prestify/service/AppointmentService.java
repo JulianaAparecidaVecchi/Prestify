@@ -33,24 +33,50 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AppointmentService {
 
-    private final AppointmentRepository appointmentRepository;
-    private final ClientRepository clientRepository;
-    private final BusinessServiceRepository serviceRepository;
-    private final UserRepository userRepository;
-    private final CurrentUserService currentUserService;
+    private final AppointmentRepository
+        appointmentRepository;
+
+    private final ClientRepository
+        clientRepository;
+
+    private final BusinessServiceRepository
+        serviceRepository;
+
+    private final UserRepository
+        userRepository;
+
+    private final CurrentUserService
+        currentUserService;
+
+    private final FinancialService
+        financialService;
 
     public AppointmentService(
             AppointmentRepository appointmentRepository,
             ClientRepository clientRepository,
             BusinessServiceRepository serviceRepository,
             UserRepository userRepository,
-            CurrentUserService currentUserService
+            CurrentUserService currentUserService,
+            FinancialService financialService
     ) {
-        this.appointmentRepository = appointmentRepository;
-        this.clientRepository = clientRepository;
-        this.serviceRepository = serviceRepository;
-        this.userRepository = userRepository;
-        this.currentUserService = currentUserService;
+
+        this.appointmentRepository =
+            appointmentRepository;
+
+        this.clientRepository =
+            clientRepository;
+
+        this.serviceRepository =
+            serviceRepository;
+
+        this.userRepository =
+            userRepository;
+
+        this.currentUserService =
+            currentUserService;
+
+        this.financialService =
+            financialService;
     }
 
     @Transactional(readOnly = true)
@@ -63,46 +89,64 @@ public class AppointmentService {
             int size
     ) {
 
-        validatePagination(page, size);
+        validatePagination(
+            page,
+            size
+        );
 
-        if (start == null || end == null) {
+        if (
+            start == null
+            || end == null
+        ) {
+
             throw new BusinessException(
                 "Informe o período inicial e final da agenda."
             );
         }
 
-        if (!start.isBefore(end)) {
+        if (
+            !start.isBefore(
+                end
+            )
+        ) {
+
             throw new BusinessException(
                 "O início do período deve ser anterior ao fim."
             );
         }
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
 
-        if (professionalId != null) {
+        if (
+            professionalId != null
+        ) {
+
             findProfessional(
                 professionalId,
                 organizationId
             );
         }
 
-        Page<Appointment> appointments =
-            appointmentRepository.findAgenda(
-                organizationId,
-                start,
-                end,
-                professionalId,
-                status,
-                PageRequest.of(
-                    page,
-                    size,
-                    Sort.by(
-                        Sort.Direction.ASC,
-                        "startTime"
-                    )
-                )
-            );
+        Page<Appointment>
+            appointments =
+                appointmentRepository
+                    .findAgenda(
+                        organizationId,
+                        start,
+                        end,
+                        professionalId,
+                        status,
+                        PageRequest.of(
+                            page,
+                            size,
+                            Sort.by(
+                                Sort.Direction.ASC,
+                                "startTime"
+                            )
+                        )
+                    );
 
         return appointments.map(
             this::toResponse
@@ -115,7 +159,9 @@ public class AppointmentService {
     ) {
 
         return toResponse(
-            findAppointment(id)
+            findAppointment(
+                id
+            )
         );
     }
 
@@ -125,7 +171,8 @@ public class AppointmentService {
     ) {
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
 
         Client client =
             findClient(
@@ -159,6 +206,7 @@ public class AppointmentService {
                 LocalDateTime.now()
             )
         ) {
+
             throw new BusinessException(
                 "O agendamento não pode ser criado no passado."
             );
@@ -166,7 +214,8 @@ public class AppointmentService {
 
         LocalDateTime endTime =
             startTime.plusMinutes(
-                service.getDurationMinutes()
+                service
+                    .getDurationMinutes()
             );
 
         validateConflict(
@@ -180,7 +229,9 @@ public class AppointmentService {
         Appointment appointment =
             new Appointment();
 
-        appointment.setClient(client);
+        appointment.setClient(
+            client
+        );
 
         appointment.setService(
             service
@@ -199,16 +250,16 @@ public class AppointmentService {
         );
 
         /*
-         * Snapshot:
-         * preço e duração são copiados do serviço
-         * para preservar o histórico.
+         * Snapshot do preço e da
+         * duração do serviço.
          */
         appointment.setPrice(
             service.getPrice()
         );
 
         appointment.setDurationMinutes(
-            service.getDurationMinutes()
+            service
+                .getDurationMinutes()
         );
 
         appointment.setStatus(
@@ -241,12 +292,15 @@ public class AppointmentService {
     ) {
 
         Appointment appointment =
-            findAppointment(id);
+            findAppointment(
+                id
+            );
 
         if (
             appointment.getStatus()
                 == AppointmentStatus.COMPLETED
         ) {
+
             throw new BusinessException(
                 "Um agendamento concluído não pode ser alterado."
             );
@@ -256,13 +310,15 @@ public class AppointmentService {
             appointment.getStatus()
                 == AppointmentStatus.CANCELLED
         ) {
+
             throw new BusinessException(
                 "Um agendamento cancelado não pode ser alterado."
             );
         }
 
         Long organizationId =
-            currentUserService.getOrganizationId();
+            currentUserService
+                .getOrganizationId();
 
         Client client =
             findClient(
@@ -278,7 +334,8 @@ public class AppointmentService {
 
         User professional =
             findProfessional(
-                request.getProfessionalId(),
+                request
+                    .getProfessionalId(),
                 organizationId
             );
 
@@ -296,6 +353,7 @@ public class AppointmentService {
                 LocalDateTime.now()
             )
         ) {
+
             throw new BusinessException(
                 "O agendamento não pode ser movido para o passado."
             );
@@ -303,7 +361,8 @@ public class AppointmentService {
 
         LocalDateTime endTime =
             startTime.plusMinutes(
-                service.getDurationMinutes()
+                service
+                    .getDurationMinutes()
             );
 
         validateConflict(
@@ -339,7 +398,8 @@ public class AppointmentService {
         );
 
         appointment.setDurationMinutes(
-            service.getDurationMinutes()
+            service
+                .getDurationMinutes()
         );
 
         appointment.setNotes(
@@ -362,7 +422,9 @@ public class AppointmentService {
     ) {
 
         Appointment appointment =
-            findAppointment(id);
+            findAppointment(
+                id
+            );
 
         AppointmentStatus currentStatus =
             appointment.getStatus();
@@ -370,6 +432,7 @@ public class AppointmentService {
         if (
             currentStatus == newStatus
         ) {
+
             return toResponse(
                 appointment
             );
@@ -384,10 +447,29 @@ public class AppointmentService {
             newStatus
         );
 
-        return toResponse(
+        appointment =
             appointmentRepository.save(
                 appointment
-            )
+            );
+
+        /*
+         * Quando o atendimento é
+         * concluído, cria uma receita
+         * automática no financeiro.
+         */
+        if (
+            newStatus
+                == AppointmentStatus.COMPLETED
+        ) {
+
+            financialService
+                .createAppointmentIncome(
+                    appointment
+                );
+        }
+
+        return toResponse(
+            appointment
         );
     }
 
@@ -397,16 +479,15 @@ public class AppointmentService {
     ) {
 
         Appointment appointment =
-            findAppointment(id);
+            findAppointment(
+                id
+            );
 
-        /*
-         * Não apagamos fisicamente.
-         * Cancelamento preserva histórico.
-         */
         if (
             appointment.getStatus()
                 == AppointmentStatus.COMPLETED
         ) {
+
             throw new BusinessException(
                 "Um agendamento concluído não pode ser excluído."
             );
@@ -460,7 +541,8 @@ public class AppointmentService {
             );
     }
 
-    private BusinessService findBusinessService(
+    private BusinessService
+        findBusinessService(
             Long id,
             Long organizationId
     ) {
@@ -507,6 +589,7 @@ public class AppointmentService {
                 client.getActive()
             )
         ) {
+
             throw new BusinessException(
                 "Não é possível agendar para um cliente inativo."
             );
@@ -517,6 +600,7 @@ public class AppointmentService {
                 service.getActive()
             )
         ) {
+
             throw new BusinessException(
                 "Não é possível utilizar um serviço inativo."
             );
@@ -527,6 +611,7 @@ public class AppointmentService {
                 professional.getActive()
             )
         ) {
+
             throw new BusinessException(
                 "Não é possível agendar para um profissional inativo."
             );
@@ -551,7 +636,10 @@ public class AppointmentService {
                     ignoredAppointmentId
                 );
 
-        if (conflicts > 0) {
+        if (
+            conflicts > 0
+        ) {
+
             throw new BusinessException(
                 "O profissional já possui um agendamento neste horário."
             );
@@ -594,7 +682,10 @@ public class AppointmentService {
                     false;
             };
 
-        if (!valid) {
+        if (
+            !valid
+        ) {
+
             throw new BusinessException(
                 "Transição de status inválida: "
                 + current
@@ -613,6 +704,7 @@ public class AppointmentService {
             value == null
             || value.isBlank()
         ) {
+
             return null;
         }
 
@@ -624,7 +716,10 @@ public class AppointmentService {
             int size
     ) {
 
-        if (page < 0) {
+        if (
+            page < 0
+        ) {
+
             throw new BusinessException(
                 "A página não pode ser negativa."
             );
@@ -634,6 +729,7 @@ public class AppointmentService {
             size < 1
             || size > 100
         ) {
+
             throw new BusinessException(
                 "O tamanho da página deve estar entre 1 e 100."
             );
@@ -674,7 +770,9 @@ public class AppointmentService {
             appointment.getStartTime(),
             appointment.getEndTime(),
 
-            appointment.getDurationMinutes(),
+            appointment
+                .getDurationMinutes(),
+
             appointment.getPrice(),
 
             appointment

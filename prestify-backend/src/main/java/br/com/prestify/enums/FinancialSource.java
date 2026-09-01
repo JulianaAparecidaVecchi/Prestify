@@ -4,6 +4,8 @@ public enum FinancialSource {
 
     MANUAL,
 
-    SUBSCRIPTION
+    SUBSCRIPTION,
+
+    APPOINTMENT
 
 }
