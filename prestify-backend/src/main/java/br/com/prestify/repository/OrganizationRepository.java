@@ -6,6 +6,8 @@ import br.com.prestify.enums.BillingCycle;
 import br.com.prestify.enums.PlanType;
 import br.com.prestify.enums.SubscriptionStatus;
 
+import java.time.LocalDate;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -53,6 +55,57 @@ public interface OrganizationRepository
     List<Organization>
         findByActiveTrueAndSubscriptionStatus(
             SubscriptionStatus status
+        );
+
+    /*
+     * Empresas com cobrança recorrente
+     * vencida ou vencendo na data
+     * informada.
+     *
+     * Retornamos apenas os IDs para
+     * que cada organização seja
+     * processada separadamente.
+     */
+    @Query("""
+        SELECT o.id
+        FROM Organization o
+        WHERE o.active = true
+        AND o.subscriptionStatus =
+            :subscriptionStatus
+        AND o.nextBillingDate IS NOT NULL
+        AND o.nextBillingDate <= :date
+        ORDER BY o.nextBillingDate ASC,
+                 o.id ASC
+        """)
+    List<Long>
+        findDueSubscriptionOrganizationIds(
+            @Param("subscriptionStatus")
+            SubscriptionStatus
+                subscriptionStatus,
+
+            @Param("date")
+            LocalDate date
+        );
+
+    /*
+     * Consulta utilizada durante o
+     * processamento da cobrança.
+     *
+     * Não utilizamos PESSIMISTIC_WRITE
+     * porque a combinação atual de
+     * Hibernate e MariaDB gera
+     * "FOR UPDATE OF alias", sintaxe
+     * incompatível com o banco.
+     */
+    @Query("""
+        SELECT o
+        FROM Organization o
+        WHERE o.id = :id
+        """)
+    Optional<Organization>
+        findByIdForSubscriptionBilling(
+            @Param("id")
+            Long id
         );
 
     @Query("""

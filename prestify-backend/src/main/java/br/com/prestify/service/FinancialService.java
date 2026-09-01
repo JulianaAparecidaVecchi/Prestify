@@ -192,8 +192,16 @@ public class FinancialService {
 
     /*
      * =========================
-     * COBRANÇA DA ASSINATURA
+     * COBRANÇA ADMINISTRATIVA
+     * DA ASSINATURA
      * =========================
+     *
+     * Usada quando plano ou ciclo
+     * são alterados manualmente.
+     *
+     * Cada alteração é um evento
+     * independente, por isso a
+     * referência continua usando UUID.
      */
 
     @Transactional
@@ -202,38 +210,21 @@ public class FinancialService {
             LocalDate chargeDate
     ) {
 
-        if (
-            organization == null
-            || organization.getId()
-                == null
-        ) {
+        validateOrganizationForCharge(
+            organization
+        );
 
-            throw new BusinessException(
-                "Não foi possível gerar a cobrança da assinatura."
-            );
-        }
-
-        if (chargeDate == null) {
-
-            chargeDate =
-                LocalDate.now();
-        }
+        LocalDate effectiveChargeDate =
+            chargeDate == null
+                ? LocalDate.now()
+                : chargeDate;
 
         String reference =
-            buildSubscriptionReference(
+            buildAdministrativeSubscriptionReference(
                 organization,
-                chargeDate
+                effectiveChargeDate
             );
 
-        /*
-         * A referência agora representa
-         * um evento individual de
-         * cobrança.
-         *
-         * Mantemos a verificação para
-         * respeitar a unicidade da
-         * referência no banco.
-         */
         boolean alreadyExists =
             financialRepository
                 .existsByOrganizationIdAndExternalReference(
@@ -242,9 +233,81 @@ public class FinancialService {
                 );
 
         if (alreadyExists) {
-
             return;
         }
+
+        createSubscriptionTransaction(
+            organization,
+            effectiveChargeDate,
+            reference,
+            "Cobrança administrativa da assinatura Prestify."
+        );
+    }
+
+    /*
+     * =========================
+     * COBRANÇA RECORRENTE
+     * =========================
+     *
+     * Para a cobrança automática,
+     * a referência é determinística.
+     *
+     * Uma organização só pode ter
+     * uma cobrança automática para
+     * a mesma data de competência.
+     */
+
+    @Transactional
+    public boolean
+        createRecurringSubscriptionCharge(
+            Organization organization,
+            LocalDate billingDate
+        ) {
+
+        validateOrganizationForCharge(
+            organization
+        );
+
+        if (billingDate == null) {
+
+            throw new BusinessException(
+                "A data da cobrança recorrente é obrigatória."
+            );
+        }
+
+        String reference =
+            buildRecurringSubscriptionReference(
+                organization,
+                billingDate
+            );
+
+        boolean alreadyExists =
+            financialRepository
+                .existsByOrganizationIdAndExternalReference(
+                    organization.getId(),
+                    reference
+                );
+
+        if (alreadyExists) {
+            return false;
+        }
+
+        createSubscriptionTransaction(
+            organization,
+            billingDate,
+            reference,
+            "Cobrança recorrente automática da assinatura Prestify."
+        );
+
+        return true;
+    }
+
+    private void createSubscriptionTransaction(
+            Organization organization,
+            LocalDate chargeDate,
+            String reference,
+            String originDescription
+    ) {
 
         BigDecimal amount =
             calculateSubscriptionPrice(
@@ -310,11 +373,13 @@ public class FinancialService {
         );
 
         transaction.setNotes(
-            "Cobrança automática da assinatura Prestify. "
-                + "Plano: "
+            originDescription
+                + " Plano: "
                 + planName
                 + ". Ciclo: "
                 + cycleName
+                + ". Competência: "
+                + chargeDate
                 + "."
         );
 
@@ -326,11 +391,6 @@ public class FinancialService {
             reference
         );
 
-        /*
-         * Cobranças da plataforma não
-         * foram criadas manualmente por
-         * um usuário da empresa.
-         */
         transaction.setCreatedBy(
             null
         );
@@ -342,6 +402,44 @@ public class FinancialService {
         financialRepository.save(
             transaction
         );
+    }
+
+    private void
+        validateOrganizationForCharge(
+            Organization organization
+        ) {
+
+        if (
+            organization == null
+            || organization.getId()
+                == null
+        ) {
+
+            throw new BusinessException(
+                "Não foi possível gerar a cobrança da assinatura."
+            );
+        }
+
+        if (
+            organization.getPlan()
+                == null
+        ) {
+
+            throw new BusinessException(
+                "A organização não possui um plano válido."
+            );
+        }
+
+        if (
+            organization
+                .getBillingCycle()
+                == null
+        ) {
+
+            throw new BusinessException(
+                "A organização não possui um ciclo de cobrança válido."
+            );
+        }
     }
 
     @Transactional(readOnly = true)
@@ -614,11 +712,6 @@ public class FinancialService {
             );
         }
 
-        /*
-         * Cobrança automática pode ser
-         * marcada como paga, mas não
-         * cancelada pela empresa.
-         */
         if (
             transaction.getSource()
                 == FinancialSource.SUBSCRIPTION
@@ -791,17 +884,12 @@ public class FinancialService {
     }
 
     /*
-     * Cada chamada legítima deste
-     * método representa uma nova
-     * cobrança.
-     *
-     * O UUID evita que uma empresa
-     * que volte ao mesmo plano no
-     * mesmo dia seja confundida com
-     * uma cobrança anterior.
+     * Alterações administrativas de
+     * plano/ciclo continuam sendo
+     * eventos únicos.
      */
     private String
-        buildSubscriptionReference(
+        buildAdministrativeSubscriptionReference(
             Organization organization,
             LocalDate chargeDate
         ) {
@@ -820,6 +908,26 @@ public class FinancialService {
             + chargeDate
             + "_"
             + UUID.randomUUID();
+    }
+
+    /*
+     * A referência recorrente não usa
+     * UUID propositalmente.
+     *
+     * A mesma empresa e a mesma
+     * competência sempre resultam na
+     * mesma referência.
+     */
+    private String
+        buildRecurringSubscriptionReference(
+            Organization organization,
+            LocalDate billingDate
+        ) {
+
+        return "PRESTIFY_RECURRING_"
+            + organization.getId()
+            + "_"
+            + billingDate;
     }
 
     private BigDecimal getTotal(
@@ -922,7 +1030,7 @@ public class FinancialService {
         findSupplierIfPresent(
             Long supplierId,
             Long organizationId
-    ) {
+        ) {
 
         if (supplierId == null) {
 
