@@ -180,6 +180,6 @@ Para executar o sistema localmente, é necessário possuir o MySQL/MariaDB em ex
 Este projeto foi desenvolvido por:
 
 - Arthur Rodrigues Pansera
-- Jean Inácio Praes
+- Jean Inácio Praes Moura
 - Juliana Aparecida Vecchi
 - Stefany Carlos de Oliveira
