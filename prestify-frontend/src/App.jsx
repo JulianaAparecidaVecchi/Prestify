@@ -65,6 +65,9 @@ import PlatformSubscriptionsPage
 import PlatformUsersPage
   from './pages/platform/PlatformUsersPage'
 
+import PlatformSettingsPage
+  from './pages/platform/PlatformSettingsPage'
+
 import authService
   from './services/authService'
 
@@ -191,6 +194,13 @@ function App() {
             path="/platform/users"
             element={
               <PlatformUsersPage />
+            }
+          />
+
+          <Route
+            path="/platform/settings"
+            element={
+              <PlatformSettingsPage />
             }
           />
         </Route>

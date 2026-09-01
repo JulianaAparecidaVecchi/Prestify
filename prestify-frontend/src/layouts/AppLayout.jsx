@@ -103,6 +103,11 @@ const platformMenuItems = [
     label: 'Usuários',
     icon: UserSettingsIcon,
   },
+  {
+    path: '/platform/settings',
+    label: 'Configurações',
+    icon: SettingsIcon,
+  },
 ]
 
 const routeTitles = {
@@ -129,6 +134,9 @@ const routeTitles = {
 
   '/platform/users':
     'Usuários da Plataforma',
+
+  '/platform/settings':
+    'Configurações da Plataforma',
 }
 
 function AppLayout() {
@@ -721,6 +729,9 @@ function getPageSubtitle(
 
     '/platform/users':
       'Gerencie os administradores internos da plataforma Prestify',
+
+    '/platform/settings':
+      'Defina padrões e parâmetros globais do Prestify',
   }
 
   return (
