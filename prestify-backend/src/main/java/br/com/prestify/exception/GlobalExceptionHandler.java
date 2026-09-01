@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 
 import org.springframework.http.converter.HttpMessageNotReadableException;
 
+import org.springframework.security.access.AccessDeniedException;
+
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 
@@ -58,6 +60,47 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .status(
                 HttpStatus.UNAUTHORIZED
+            )
+            .body(
+                error
+            );
+    }
+
+    /*
+     * =========================
+     * ACESSO NEGADO
+     * =========================
+     *
+     * O usuário está autenticado,
+     * porém não possui permissão
+     * para acessar o recurso.
+     *
+     * Exemplo:
+     * EMPLOYEE tentando acessar
+     * um endpoint permitido apenas
+     * para OWNER ou ADMIN.
+     */
+    @ExceptionHandler(
+        AccessDeniedException.class
+    )
+    public ResponseEntity<ApiError>
+        handleAccessDenied(
+            AccessDeniedException exception,
+            HttpServletRequest request
+        ) {
+
+        ApiError error =
+            new ApiError(
+                LocalDateTime.now(),
+                HttpStatus.FORBIDDEN.value(),
+                "Forbidden",
+                "Você não possui permissão para realizar esta operação.",
+                request.getRequestURI()
+            );
+
+        return ResponseEntity
+            .status(
+                HttpStatus.FORBIDDEN
             )
             .body(
                 error
@@ -212,12 +255,13 @@ public class GlobalExceptionHandler {
     }
 
     /*
-     * Parâmetro obrigatório da URL não informado.
+     * Parâmetro obrigatório da URL
+     * não informado.
      *
      * Exemplo:
-     * /api/appointments sem start ou end,
-     * caso estes parâmetros sejam obrigatórios
-     * no controller.
+     * /api/appointments sem start
+     * ou end, caso estes parâmetros
+     * sejam obrigatórios.
      */
     @ExceptionHandler(
         MissingServletRequestParameterException.class
@@ -252,8 +296,8 @@ public class GlobalExceptionHandler {
     }
 
     /*
-     * Parâmetro informado com tipo ou
-     * formato incompatível.
+     * Parâmetro informado com tipo
+     * ou formato incompatível.
      *
      * Exemplos:
      *
@@ -331,12 +375,13 @@ public class GlobalExceptionHandler {
      * ERRO NÃO PREVISTO
      * =========================
      *
-     * Não devolvemos detalhes técnicos
-     * para o frontend.
+     * Não devolvemos detalhes
+     * técnicos para o frontend.
      *
-     * Porém registramos o stack trace
-     * completo no servidor para facilitar
-     * diagnóstico e manutenção.
+     * Porém registramos o stack
+     * trace completo no servidor
+     * para facilitar diagnóstico
+     * e manutenção.
      */
     @ExceptionHandler(
         Exception.class
